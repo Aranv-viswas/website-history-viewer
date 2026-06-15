@@ -1,0 +1,112 @@
+---
+/**
+ * ScreenshotFrame — renders a snapshot preview with graceful degradation:
+ *
+ *   1. If the provider produced an image, show an optimized <img>.
+ *   2. Otherwise embed the archived page in a sandboxed, lazy <iframe>, layered
+ *      over a generated poster so the box is never empty while loading.
+ *   3. If there's no snapshot at all, show a friendly empty state.
+ *
+ * Iframe restrictions (X-Frame-Options, CSP) can't be detected without JS, so
+ * we always surface an "Open on the Wayback Machine" link as an escape hatch.
+ */
+import type { Snapshot, Screenshot } from '@lib/types';
+import { placeholderPoster } from '@services/screenshot';
+import { formatWaybackTimestamp } from '@utils/date';
+
+interface Props {
+  snapshot: Snapshot;
+  screenshot: Screenshot;
+  label: string;
+  /** Image/iframe loading strategy. */
+  loading?: 'eager' | 'lazy';
+  /** Tailwind aspect-ratio class for the frame. */
+  aspectClass?: string;
+}
+
+const {
+  snapshot,
+  screenshot,
+  label,
+  loading = 'lazy',
+  aspectClass = 'aspect-[4/3]',
+} = Astro.props;
+
+const poster = placeholderPoster(label, screenshot.width, screenshot.height);
+const capturedLabel = snapshot.timestamp
+  ? formatWaybackTimestamp(snapshot.timestamp)
+  : snapshot.requestedDate;
+---
+
+<figure class="group relative">
+  <div
+    class:list={[
+      'relative w-full overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900',
+      aspectClass,
+    ]}
+  >
+    {
+      !snapshot.available ? (
+        <div class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+          <span class="text-3xl" aria-hidden="true">
+            🗄️
+          </span>
+          <p class="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            No snapshot available
+          </p>
+          <p class="max-w-xs text-xs text-neutral-500">
+            {snapshot.message ??
+              'The Wayback Machine has no capture for this date.'}
+          </p>
+        </div>
+      ) : screenshot.imageUrl ? (
+        <img
+          src={screenshot.imageUrl}
+          width={screenshot.width}
+          height={screenshot.height}
+          alt={screenshot.alt}
+          loading={loading}
+          decoding="async"
+          class="h-full w-full object-cover object-top"
+        />
+      ) : screenshot.useIframe && screenshot.iframeUrl ? (
+        <iframe
+          src={screenshot.iframeUrl}
+          title={`Archived ${label}`}
+          loading={loading}
+          referrerpolicy="no-referrer"
+          sandbox="allow-scripts allow-same-origin allow-popups"
+          style={`background-image:url("${poster}");background-size:cover;`}
+          class="h-full w-full border-0"
+        />
+      ) : (
+        <img
+          src={poster}
+          width={screenshot.width}
+          height={screenshot.height}
+          alt={screenshot.alt}
+          loading={loading}
+          class="h-full w-full object-cover"
+        />
+      )
+    }
+  </div>
+
+  <figcaption
+    class="mt-2 flex items-center justify-between gap-3 text-xs text-neutral-500"
+  >
+    <span>{capturedLabel}</span>
+    {
+      snapshot.available && snapshot.archivedUrl && (
+        <a
+          href={snapshot.archivedUrl}
+          target="_blank"
+          rel="noopener nofollow"
+          class="font-medium text-brand-600 hover:underline dark:text-brand-400"
+        >
+          Open on Wayback ↗
+        </a>
+      )
+    }
+  </figcaption>
+</figure>

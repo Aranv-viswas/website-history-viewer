@@ -1,0 +1,200 @@
+---
+/**
+ * GET /[name]-history — featured "design evolution" pages (e.g. /google-history).
+ *
+ * Statically generated from the `histories` content collection. To keep the
+ * static build fast and free of network calls, the timeline is built
+ * *optimistically* from domain + year: each preview points at a timestamped
+ * Wayback URL, which the archive redirects to the nearest real capture. The
+ * dynamic /timeline/[domain] route does live availability lookups instead.
+ */
+import type { GetStaticPaths } from 'astro';
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import Timeline from '@components/Timeline.astro';
+import { domainToSlug } from '@utils/domain';
+import { timelineYears, yearToISO, currentYear } from '@utils/date';
+import { toWaybackTimestamp } from '@utils/date';
+import { articleJsonLd, breadcrumbJsonLd, faqJsonLd } from '@lib/seo';
+import type { Snapshot, TimelineEntry } from '@lib/types';
+
+export const getStaticPaths = (async () => {
+  const histories = await getCollection('histories');
+  return histories.map((entry) => ({
+    params: { history: `${entry.id}-history` },
+    props: { entry },
+  }));
+}) satisfies GetStaticPaths;
+
+const { entry } = Astro.props;
+const { data } = entry;
+const { Content } = await render(entry);
+
+const domain = data.domain;
+const name = data.name;
+const slug = domainToSlug(domain);
+const path = `/${entry.id}-history`;
+
+// Optimistic timeline entries — no build-time API calls.
+const years = timelineYears(data.timelineFrom, data.timelineStep);
+const entries: TimelineEntry[] = years.map((year) => {
+  const date = yearToISO(year);
+  const ts = toWaybackTimestamp(date);
+  const archivedUrl = `https://web.archive.org/web/${ts}/http://${domain}/`;
+  const snapshot: Snapshot = {
+    domain,
+    requestedDate: date,
+    available: true,
+    archivedUrl,
+    timestamp: ts,
+    capturedAt: date,
+    status: '200',
+  };
+  return { year, date, snapshot };
+});
+
+const jsonLd = [
+  articleJsonLd({
+    title: data.title,
+    description: data.description,
+    path,
+    datePublished: data.publishDate?.toISOString(),
+    dateModified: data.updatedDate?.toISOString(),
+  }),
+  breadcrumbJsonLd([
+    { name: 'Home', path: '/' },
+    { name: `${name} history`, path },
+  ]),
+  ...(data.faqs.length ? [faqJsonLd(data.faqs)] : []),
+];
+---
+
+<BaseLayout
+  title={data.title}
+  description={data.description}
+  type="article"
+  jsonLd={jsonLd}
+>
+  {/* Hero */}
+  <section
+    class="border-b border-neutral-200 bg-gradient-to-b from-brand-50 to-white dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950"
+  >
+    <div class="container-page py-14">
+      <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
+        <a href="/" class="hover:text-brand-600 dark:hover:text-brand-400">Home</a>
+        <span class="mx-2">/</span>
+        <span class="text-neutral-700 dark:text-neutral-300">{name} history</span>
+      </nav>
+      <div class="flex items-center gap-4">
+        <span class="text-5xl" aria-hidden="true">{data.emoji}</span>
+        <div>
+          <h1
+            class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+          >
+            {data.title}
+          </h1>
+          <p class="mt-1 text-neutral-600 dark:text-neutral-400">
+            {domain} · founded {data.foundedYear}
+          </p>
+        </div>
+      </div>
+      <p class="mt-5 max-w-2xl text-lg text-neutral-700 dark:text-neutral-300">
+        {data.description}
+      </p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a
+          href={`/site/${slug}/${yearToISO(data.heroYear)}`}
+          class="btn-primary"
+        >
+          See {name} in {data.heroYear} →
+        </a>
+        <a
+          href={`/compare?domain=${encodeURIComponent(domain)}&a=${yearToISO(data.foundedYear)}&b=${yearToISO(currentYear())}`}
+          class="btn-secondary"
+        >
+          ⇄ Compare {data.foundedYear} vs today
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div class="container-page grid gap-12 py-12 lg:grid-cols-3">
+    {/* Article body */}
+    <article
+      class="prose prose-neutral max-w-none dark:prose-invert lg:col-span-2 prose-headings:scroll-mt-20 prose-a:text-brand-600 dark:prose-a:text-brand-400"
+    >
+      <Content />
+    </article>
+
+    {/* Sidebar: milestones */}
+    <aside class="lg:col-span-1">
+      <div class="sticky top-20 space-y-6">
+        {
+          data.milestones.length > 0 && (
+            <div class="card p-6">
+              <h2 class="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                Key milestones
+              </h2>
+              <ol class="mt-4 space-y-4">
+                {data.milestones.map((m) => (
+                  <li class="flex gap-3">
+                    <span class="font-mono text-sm font-bold text-brand-600 dark:text-brand-400">
+                      {m.year}
+                    </span>
+                    <div>
+                      <p class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                        {m.title}
+                      </p>
+                      <p class="text-sm text-neutral-600 dark:text-neutral-400">
+                        {m.description}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )
+        }
+      </div>
+    </aside>
+  </div>
+
+  {/* Timeline */}
+  <section class="container-page py-8">
+    <h2 class="mb-8 text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+      {name} design timeline
+    </h2>
+    <Timeline domain={domain} entries={entries} />
+  </section>
+
+  {/* FAQ */}
+  {
+    data.faqs.length > 0 && (
+      <section class="border-t border-neutral-200 bg-neutral-50 py-12 dark:border-neutral-800 dark:bg-neutral-900/40">
+        <div class="container-page max-w-3xl">
+          <h2 class="mb-6 text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+            Frequently asked questions
+          </h2>
+          <div class="space-y-3">
+            {data.faqs.map((f) => (
+              <details class="card group p-5">
+                <summary class="cursor-pointer list-none font-semibold text-neutral-900 dark:text-neutral-100">
+                  <span class="mr-2 text-brand-600 dark:text-brand-400 group-open:hidden">
+                    +
+                  </span>
+                  <span class="mr-2 hidden text-brand-600 dark:text-brand-400 group-open:inline">
+                    −
+                  </span>
+                  {f.question}
+                </summary>
+                <p class="mt-3 text-neutral-700 dark:text-neutral-300">
+                  {f.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+</BaseLayout>

@@ -1,0 +1,158 @@
+---
+/**
+ * GET /compare?domain=&a=&b= — side-by-side / slider comparison.
+ *
+ * With no/invalid query params it renders a friendly landing form (compare mode
+ * pre-toggled). With a valid domain + two dates it resolves both snapshots and
+ * renders the <ComparisonView> plus share actions. On-demand rendered.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import SearchForm from '@components/SearchForm.astro';
+import ComparisonView from '@components/ComparisonView.astro';
+import ShareButtons from '@components/ShareButtons.astro';
+import { getSnapshot } from '@services/wayback';
+import { getWebsiteScreenshot } from '@services/screenshot';
+import { normalizeDomain, isValidDomain, domainDisplayName, domainToSlug } from '@utils/domain';
+import { isValidArchiveDate, formatMonthYear, formatISODate, todayISO } from '@utils/date';
+import { POPULAR_COMPARISONS } from '@lib/constants';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { SITE } from '@lib/constants';
+import type { ComparisonResult } from '@lib/types';
+
+export const prerender = false;
+
+const params = Astro.url.searchParams;
+const domain = normalizeDomain(params.get('domain') ?? '');
+const a = params.get('a') ?? '';
+const b = params.get('b') ?? todayISO();
+
+const hasValidQuery =
+  isValidDomain(domain) && isValidArchiveDate(a) && isValidArchiveDate(b);
+
+let result: ComparisonResult | null = null;
+let name = '';
+let labelA = '';
+let labelB = '';
+
+if (hasValidQuery) {
+  name = domainDisplayName(domain);
+  labelA = formatMonthYear(a);
+  labelB = formatMonthYear(b);
+
+  const [snapA, snapB] = await Promise.all([
+    getSnapshot(domain, a),
+    getSnapshot(domain, b),
+  ]);
+  const [shotA, shotB] = await Promise.all([
+    getWebsiteScreenshot(snapA.archivedUrl, {
+      alt: `${name} on ${formatISODate(a)}`,
+    }),
+    getWebsiteScreenshot(snapB.archivedUrl, {
+      alt: `${name} on ${formatISODate(b)}`,
+    }),
+  ]);
+
+  result = {
+    domain,
+    a: { snapshot: snapA, screenshot: shotA },
+    b: { snapshot: snapB, screenshot: shotB },
+  };
+}
+
+const title = hasValidQuery
+  ? `${name}: ${labelA} vs ${labelB}`
+  : 'Compare Any Website Across Two Dates';
+const description = hasValidQuery
+  ? `Compare what ${name} looked like in ${labelA} versus ${labelB}, side by side and with a before/after slider.`
+  : 'Pick a website and two dates to see how it changed — side by side or with an interactive before/after slider.';
+
+const shareUrl = hasValidQuery
+  ? new URL(
+      `/compare?domain=${encodeURIComponent(domain)}&a=${a}&b=${b}`,
+      SITE.url
+    ).href
+  : new URL('/compare', SITE.url).href;
+
+const breadcrumb = hasValidQuery
+  ? breadcrumbJsonLd([
+      { name: 'Home', path: '/' },
+      { name: 'Compare', path: '/compare' },
+      { name: `${name}: ${labelA} vs ${labelB}`, path: '/compare' },
+    ])
+  : undefined;
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  noindex={!hasValidQuery}
+  jsonLd={breadcrumb}
+>
+  <div class="container-page py-10">
+    <header class="mb-8 text-center">
+      <h1
+        class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        {hasValidQuery ? `${name}: ${labelA} vs ${labelB}` : 'Compare a website across time'}
+      </h1>
+      <p class="mx-auto mt-2 max-w-2xl text-neutral-600 dark:text-neutral-400">
+        {description}
+      </p>
+    </header>
+
+    {
+      result ? (
+        <>
+          <ComparisonView result={result} labelA={labelA} labelB={labelB} />
+
+          <div class="mt-8 flex flex-wrap items-center justify-between gap-4">
+            <ShareButtons
+              url={shareUrl}
+              text={`See how ${name} changed from ${labelA} to ${labelB}:`}
+            />
+            <a href={`/timeline/${domainToSlug(domain)}`} class="btn-secondary">
+              📅 Full {name} timeline
+            </a>
+          </div>
+
+          <div class="mt-12">
+            <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-neutral-100">
+              Compare different dates
+            </h2>
+            <SearchForm domain={domain} dateA={a} dateB={b} compare compact />
+          </div>
+        </>
+      ) : (
+        <>
+          <div class="mt-4">
+            <SearchForm compare dateB={todayISO()} />
+          </div>
+
+          <section class="mt-14">
+            <h2 class="mb-6 text-center text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              Popular comparisons
+            </h2>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {POPULAR_COMPARISONS.map((c) => (
+                <a
+                  href={`/compare?domain=${encodeURIComponent(c.domain)}&a=${c.yearA}-01-01&b=${todayISO()}`}
+                  class="card flex items-center justify-between gap-3 p-5 transition hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-md"
+                >
+                  <div>
+                    <h3 class="font-semibold text-neutral-900 dark:text-neutral-100">
+                      {c.name}
+                    </h3>
+                    <p class="text-sm text-neutral-500">{c.yearA} vs today</p>
+                  </div>
+                  <span class="text-brand-600 dark:text-brand-400" aria-hidden="true">
+                    ⇄
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        </>
+      )
+    }
+  </div>
+</BaseLayout>

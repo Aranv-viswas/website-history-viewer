@@ -1,0 +1,235 @@
+---
+/**
+ * Homepage — hero + search, popular examples, comparisons, trending histories,
+ * internet history facts, and a (client-populated) "recently viewed" strip.
+ *
+ * Fully static and prerendered for top SEO/performance. The only client JS is
+ * the header theme toggle plus a tiny recently-viewed reader.
+ */
+import { getCollection } from 'astro:content';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import SearchForm from '@components/SearchForm.astro';
+import ExampleCard from '@components/ExampleCard.astro';
+import {
+  POPULAR_SITES,
+  POPULAR_COMPARISONS,
+  INTERNET_HISTORY_FACTS,
+  SITE,
+} from '@lib/constants';
+import { websiteJsonLd } from '@lib/seo';
+import { domainToSlug } from '@utils/domain';
+import { yearToISO, currentYear, todayISO } from '@utils/date';
+
+const histories = (await getCollection('histories')).sort(
+  (a, b) => b.data.weight - a.data.weight
+);
+
+const year = currentYear();
+const today = todayISO();
+---
+
+<BaseLayout
+  title="See What Any Website Looked Like In The Past"
+  description={SITE.description}
+  jsonLd={websiteJsonLd()}
+>
+  {/* ---------------- Hero ---------------- */}
+  <section
+    class="relative overflow-hidden border-b border-neutral-200 bg-gradient-to-b from-brand-50 to-white dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950"
+  >
+    <div class="container-page py-16 text-center sm:py-24">
+      <p
+        class="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/70 px-3 py-1 text-sm font-medium text-brand-700 dark:border-brand-900 dark:bg-neutral-900 dark:text-brand-300"
+      >
+        🕰️ Powered by the Internet Archive Wayback Machine
+      </p>
+      <h1
+        class="mx-auto max-w-4xl text-balance text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-6xl dark:text-neutral-50"
+      >
+        See What Any Website Looked Like In The Past
+      </h1>
+      <p
+        class="mx-auto mt-5 max-w-2xl text-pretty text-lg text-neutral-600 dark:text-neutral-400"
+      >
+        Travel through internet history. Compare Google, YouTube, Facebook,
+        Amazon and millions of other websites across time.
+      </p>
+
+      <div class="mt-10">
+        <SearchForm />
+      </div>
+
+      {/* Quick popular examples under the hero */}
+      <div
+        class="mt-8 flex flex-wrap items-center justify-center gap-2 text-sm"
+        aria-label="Popular examples"
+      >
+        <span class="text-neutral-500">Try:</span>
+        {
+          POPULAR_SITES.slice(0, 5).map((site) => (
+            <a
+              href={`/site/${domainToSlug(site.domain)}/${yearToISO(site.year)}`}
+              class="rounded-full border border-neutral-300 bg-white px-3 py-1 font-medium text-neutral-700 transition hover:border-brand-400 hover:text-brand-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:text-brand-400"
+            >
+              {site.name} {site.year}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  {/* ---------------- Recently viewed (client-populated) ---------------- */}
+  <section id="recent" class="container-page hidden py-10">
+    <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-neutral-100">
+      Recently viewed
+    </h2>
+    <div id="recent-list" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"></div>
+  </section>
+
+  {/* ---------------- Popular examples ---------------- */}
+  <section id="examples" class="container-page py-14">
+    <div class="mb-8 text-center">
+      <h2 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+        Popular examples
+      </h2>
+      <p class="mt-2 text-neutral-600 dark:text-neutral-400">
+        Jump straight into a classic snapshot.
+      </p>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {POPULAR_SITES.map((site) => <ExampleCard site={site} />)}
+    </div>
+  </section>
+
+  {/* ---------------- Popular comparisons ---------------- */}
+  <section class="border-y border-neutral-200 bg-neutral-50 py-14 dark:border-neutral-800 dark:bg-neutral-900/40">
+    <div class="container-page">
+      <div class="mb-8 text-center">
+        <h2 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          Popular comparisons
+        </h2>
+        <p class="mt-2 text-neutral-600 dark:text-neutral-400">
+          See how the giants changed — then vs. today.
+        </p>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          POPULAR_COMPARISONS.map((c) => (
+            <a
+              href={`/compare?domain=${encodeURIComponent(c.domain)}&a=${yearToISO(c.yearA)}&b=${today}`}
+              class="card flex items-center justify-between gap-3 p-5 transition hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-md"
+            >
+              <div>
+                <h3 class="font-semibold text-neutral-900 dark:text-neutral-100">
+                  {c.name}
+                </h3>
+                <p class="text-sm text-neutral-500">
+                  {c.yearA} <span aria-hidden="true">vs</span> {year}
+                </p>
+              </div>
+              <span class="text-brand-600 dark:text-brand-400" aria-hidden="true">
+                ⇄
+              </span>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  {/* ---------------- Trending websites / featured histories ---------------- */}
+  <section class="container-page py-14">
+    <div class="mb-8 text-center">
+      <h2 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+        Trending website histories
+      </h2>
+      <p class="mt-2 text-neutral-600 dark:text-neutral-400">
+        Deep-dive design evolutions of the web’s most iconic sites.
+      </p>
+    </div>
+    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        histories.map((h) => (
+          <a
+            href={`/${h.id}-history`}
+            class="card group flex flex-col p-6 transition hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-md"
+          >
+            <span class="text-3xl" aria-hidden="true">
+              {h.data.emoji}
+            </span>
+            <h3 class="mt-3 text-lg font-bold text-neutral-900 dark:text-neutral-100">
+              {h.data.name} history
+            </h3>
+            <p class="mt-1 line-clamp-3 text-sm text-neutral-600 dark:text-neutral-400">
+              {h.data.description}
+            </p>
+            <span class="mt-4 text-sm font-medium text-brand-600 group-hover:underline dark:text-brand-400">
+              Explore the evolution →
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  {/* ---------------- Internet history facts ---------------- */}
+  <section
+    id="facts"
+    class="border-t border-neutral-200 bg-neutral-50 py-14 dark:border-neutral-800 dark:bg-neutral-900/40"
+  >
+    <div class="container-page">
+      <div class="mb-8 text-center">
+        <h2 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          Internet history facts
+        </h2>
+        <p class="mt-2 text-neutral-600 dark:text-neutral-400">
+          A few milestones from the story of the web.
+        </p>
+      </div>
+      <div class="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2">
+        {
+          INTERNET_HISTORY_FACTS.map((f) => (
+            <div class="card flex gap-4 p-5">
+              <span class="text-xl font-extrabold text-brand-600 dark:text-brand-400">
+                {f.year}
+              </span>
+              <p class="text-sm text-neutral-700 dark:text-neutral-300">
+                {f.fact}
+              </p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // Populate "Recently viewed" from localStorage (written by the viewer page).
+  type Recent = { domain: string; name: string; date: string; href: string };
+  try {
+    const raw = localStorage.getItem('recentViews');
+    const items: Recent[] = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(items) && items.length) {
+      const list = document.getElementById('recent-list');
+      const section = document.getElementById('recent');
+      if (list && section) {
+        list.innerHTML = items
+          .slice(0, 4)
+          .map(
+            (it) => `
+            <a href="${it.href}" class="card p-4 block hover:border-brand-400 transition">
+              <p class="font-semibold text-neutral-900 dark:text-neutral-100">${it.name}</p>
+              <p class="text-sm text-neutral-500">${it.date}</p>
+              <span class="text-sm text-brand-600 dark:text-brand-400">View again →</span>
+            </a>`
+          )
+          .join('');
+        section.classList.remove('hidden');
+      }
+    }
+  } catch (_) {
+    /* ignore malformed storage */
+  }
+</script>

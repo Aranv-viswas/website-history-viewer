@@ -1,0 +1,3 @@
+# This directory stores generated/cached website screenshots.
+# Files here are produced on demand by src/services/screenshot.ts and are
+# git-ignored. This .gitkeep keeps the empty directory under version control.

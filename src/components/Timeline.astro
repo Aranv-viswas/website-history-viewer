@@ -1,0 +1,76 @@
+---
+/**
+ * Timeline — a vertical, year-by-year history of a domain.
+ * Each entry shows the year, an archived preview (lazy-loaded), the capture
+ * date, and links to the full snapshot. Entries with no snapshot degrade to a
+ * compact "no capture" note so gaps in the archive are obvious but tidy.
+ */
+import type { TimelineEntry } from '@lib/types';
+import ScreenshotFrame from '@components/ScreenshotFrame.astro';
+import { toEmbeddableUrl } from '@services/screenshot';
+import { domainToSlug, domainDisplayName } from '@utils/domain';
+
+interface Props {
+  domain: string;
+  entries: TimelineEntry[];
+}
+
+const { domain, entries } = Astro.props;
+const name = domainDisplayName(domain);
+const slug = domainToSlug(domain);
+---
+
+<ol class="relative ml-3 border-l-2 border-neutral-200 dark:border-neutral-800">
+  {
+    entries.map((entry, i) => (
+      <li class="relative mb-12 pl-6 sm:pl-10">
+        {/* Year marker */}
+        <span class="absolute -left-[11px] flex h-5 w-5 items-center justify-center rounded-full border-2 border-brand-500 bg-white dark:bg-neutral-950">
+          <span class="h-2 w-2 rounded-full bg-brand-500" />
+        </span>
+        <div class="mb-3 flex items-baseline gap-3">
+          <h3 class="text-2xl font-extrabold text-neutral-900 dark:text-neutral-100">
+            {entry.year}
+          </h3>
+          {entry.snapshot.available && (
+            <a
+              href={`/site/${slug}/${entry.date}`}
+              class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+            >
+              View {name} in {entry.year} →
+            </a>
+          )}
+        </div>
+
+        {entry.snapshot.available ? (
+          <a
+            href={`/site/${slug}/${entry.date}`}
+            class="block max-w-2xl transition hover:opacity-95"
+          >
+            <ScreenshotFrame
+              snapshot={entry.snapshot}
+              screenshot={{
+                provider: 'placeholder',
+                imageUrl: null,
+                useIframe: true,
+                iframeUrl: entry.snapshot.archivedUrl
+                  ? toEmbeddableUrl(entry.snapshot.archivedUrl)
+                  : null,
+                width: 800,
+                height: 500,
+                alt: `${name} in ${entry.year}`,
+              }}
+              label={`${name} ${entry.year}`}
+              loading={i < 2 ? 'eager' : 'lazy'}
+              aspectClass="aspect-[16/10]"
+            />
+          </a>
+        ) : (
+          <p class="max-w-2xl rounded-lg border border-dashed border-neutral-300 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-700">
+            No archived capture found for {name} in {entry.year}.
+          </p>
+        )}
+      </li>
+    ))
+  }
+</ol>

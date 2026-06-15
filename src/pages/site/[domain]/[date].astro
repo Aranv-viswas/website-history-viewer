@@ -1,0 +1,194 @@
+---
+/**
+ * GET /site/[domain]/[date] — the single-snapshot viewer.
+ *
+ * On-demand rendered (prerender = false) because the domain/date space is
+ * effectively infinite. Resolves the closest Wayback snapshot, renders a large
+ * preview, and exposes "Open in Wayback", compare, timeline, and share actions.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import ScreenshotFrame from '@components/ScreenshotFrame.astro';
+import ShareButtons from '@components/ShareButtons.astro';
+import SearchForm from '@components/SearchForm.astro';
+import { getSnapshot } from '@services/wayback';
+import { getWebsiteScreenshot } from '@services/screenshot';
+import {
+  slugToDomain,
+  isValidDomain,
+  domainDisplayName,
+  domainToSlug,
+} from '@utils/domain';
+import { isValidArchiveDate, formatISODate, todayISO } from '@utils/date';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { SITE } from '@lib/constants';
+
+export const prerender = false;
+
+const { domain: domainParam, date: dateParam } = Astro.params;
+const domain = slugToDomain(domainParam ?? '');
+const date = dateParam ?? '';
+
+// Bad input -> send the user back to a working starting point.
+if (!isValidDomain(domain) || !isValidArchiveDate(date)) {
+  return Astro.redirect('/?error=invalid-request', 302);
+}
+
+const name = domainDisplayName(domain);
+const year = date.slice(0, 4);
+const niceDate = formatISODate(date);
+
+const snapshot = await getSnapshot(domain, date);
+const screenshot = await getWebsiteScreenshot(snapshot.archivedUrl, {
+  alt: `Screenshot of ${name} on ${niceDate}, from the Wayback Machine`,
+});
+
+const title = `What Did ${name} Look Like In ${year}?`;
+const description = snapshot.available
+  ? `See an archived screenshot of ${name} from ${niceDate} and compare it with today’s version. Browse ${name}'s history on the Wayback Machine.`
+  : `We couldn’t find an archived snapshot of ${name} for ${niceDate}. Try a different date or explore ${name}'s timeline.`;
+
+const slug = domainToSlug(domain);
+const canonicalPath = `/site/${slug}/${date}`;
+const shareUrl = new URL(canonicalPath, SITE.url).href;
+const shareText = `What did ${name} look like in ${year}? See for yourself:`;
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: `${name} history`, path: `/timeline/${slug}` },
+  { name: `${name} in ${year}`, path: canonicalPath },
+]);
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  type="article"
+  noindex={!snapshot.available}
+  jsonLd={breadcrumb}
+>
+  <div class="container-page py-10">
+    {/* Breadcrumb */}
+    <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
+      <a href="/" class="hover:text-brand-600 dark:hover:text-brand-400">Home</a>
+      <span class="mx-2">/</span>
+      <a
+        href={`/timeline/${slug}`}
+        class="hover:text-brand-600 dark:hover:text-brand-400">{name} timeline</a
+      >
+      <span class="mx-2">/</span>
+      <span class="text-neutral-700 dark:text-neutral-300">{year}</span>
+    </nav>
+
+    <header class="mb-6">
+      <h1
+        class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        {name} in {year}
+      </h1>
+      <p class="mt-2 text-neutral-600 dark:text-neutral-400">
+        {
+          snapshot.available
+            ? `Archived snapshot from ${snapshot.capturedAt ? formatISODate(snapshot.capturedAt) : niceDate} · ${domain}`
+            : `No capture found near ${niceDate} · ${domain}`
+        }
+      </p>
+    </header>
+
+    {/* Main preview */}
+    <ScreenshotFrame
+      snapshot={snapshot}
+      screenshot={screenshot}
+      label={`${name} ${year}`}
+      loading="eager"
+      aspectClass="aspect-[16/10]"
+    />
+
+    {/* Actions */}
+    <div class="mt-6 flex flex-wrap items-center gap-3">
+      {
+        snapshot.available && snapshot.archivedUrl && (
+          <a
+            href={snapshot.archivedUrl}
+            target="_blank"
+            rel="noopener nofollow"
+            class="btn-primary"
+          >
+            Open in Wayback Machine ↗
+          </a>
+        )
+      }
+      <a
+        href={`/compare?domain=${encodeURIComponent(domain)}&a=${date}&b=${todayISO()}`}
+        class="btn-secondary"
+      >
+        ⇄ Compare with today
+      </a>
+      <a href={`/timeline/${slug}`} class="btn-secondary">
+        📅 View full {name} timeline
+      </a>
+    </div>
+
+    <div class="mt-6">
+      <ShareButtons url={shareUrl} text={shareText} />
+    </div>
+
+    {/* Metadata */}
+    <dl
+      class="mt-8 grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-sm sm:grid-cols-3 dark:border-neutral-800 dark:bg-neutral-900/40"
+    >
+      <div>
+        <dt class="font-medium text-neutral-500">Website</dt>
+        <dd class="text-neutral-900 dark:text-neutral-100">{name} ({domain})</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-neutral-500">Requested date</dt>
+        <dd class="text-neutral-900 dark:text-neutral-100">{niceDate}</dd>
+      </div>
+      <div class="min-w-0">
+        <dt class="font-medium text-neutral-500">Archived URL</dt>
+        <dd class="truncate text-neutral-900 dark:text-neutral-100">
+          {
+            snapshot.archivedUrl ? (
+              <a
+                href={snapshot.archivedUrl}
+                target="_blank"
+                rel="noopener nofollow"
+                class="text-brand-600 hover:underline dark:text-brand-400"
+              >
+                {snapshot.archivedUrl}
+              </a>
+            ) : (
+              '—'
+            )
+          }
+        </dd>
+      </div>
+    </dl>
+
+    {/* Change the query */}
+    <section class="mt-12">
+      <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-neutral-100">
+        Look up another date or website
+      </h2>
+      <SearchForm domain={domain} dateA={date} compact />
+    </section>
+  </div>
+</BaseLayout>
+
+{
+  snapshot.available && (
+    <script
+      is:inline
+      set:html={`
+    try {
+      var key='recentViews';
+      var item={domain:${JSON.stringify(domain)},name:${JSON.stringify(name)},date:${JSON.stringify(niceDate)},href:${JSON.stringify(canonicalPath)}};
+      var list=JSON.parse(localStorage.getItem(key)||'[]');
+      list=list.filter(function(x){return x.href!==item.href});
+      list.unshift(item);
+      localStorage.setItem(key, JSON.stringify(list.slice(0,8)));
+    } catch(e){}
+  `}
+    />
+  )
+}

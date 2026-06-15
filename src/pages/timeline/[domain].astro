@@ -1,0 +1,86 @@
+---
+/**
+ * GET /timeline/[domain] — a generated, year-by-year visual history.
+ *
+ * Resolves a snapshot for each year in the range and renders them as a vertical
+ * timeline (previews lazy-load as you scroll). On-demand rendered because the
+ * domain is arbitrary.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import Timeline from '@components/Timeline.astro';
+import SearchForm from '@components/SearchForm.astro';
+import { getSnapshots } from '@services/wayback';
+import { slugToDomain, isValidDomain, domainDisplayName, domainToSlug } from '@utils/domain';
+import { timelineYears, yearToISO, currentYear } from '@utils/date';
+import { breadcrumbJsonLd } from '@lib/seo';
+import type { TimelineEntry } from '@lib/types';
+
+export const prerender = false;
+
+const domain = slugToDomain(Astro.params.domain ?? '');
+
+if (!isValidDomain(domain)) {
+  return Astro.redirect('/?error=invalid-domain', 302);
+}
+
+const name = domainDisplayName(domain);
+const slug = domainToSlug(domain);
+
+// Build the list of years and resolve a snapshot for each.
+const years = timelineYears(1999, 4);
+const snapshots = await getSnapshots(domain, years.map(yearToISO));
+const entries: TimelineEntry[] = years.map((year, i) => ({
+  year,
+  date: yearToISO(year),
+  snapshot: snapshots[i],
+}));
+
+const available = entries.filter((e) => e.snapshot.available);
+const firstYear = available[0]?.year ?? years[0];
+const lastYear = available[available.length - 1]?.year ?? currentYear();
+
+const title = `${name} History: A Visual Timeline`;
+const description = `Watch ${name} evolve year by year, from ${firstYear} to ${currentYear()}. Archived screenshots from the Wayback Machine, assembled into one timeline.`;
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: `${name} timeline`, path: `/timeline/${slug}` },
+]);
+---
+
+<BaseLayout title={title} description={description} jsonLd={breadcrumb}>
+  <div class="container-page py-10">
+    <header class="mb-10">
+      <h1
+        class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        {name} through the years
+      </h1>
+      <p class="mt-2 max-w-2xl text-neutral-600 dark:text-neutral-400">
+        A year-by-year visual timeline of <strong>{domain}</strong>, built from
+        Internet Archive snapshots. {available.length} of {entries.length} years
+        have an available capture.
+      </p>
+
+      {
+        available.length >= 2 && (
+          <a
+            href={`/compare?domain=${encodeURIComponent(domain)}&a=${yearToISO(firstYear)}&b=${yearToISO(lastYear)}`}
+            class="btn-primary mt-5"
+          >
+            ⇄ Compare {firstYear} vs {lastYear}
+          </a>
+        )
+      }
+    </header>
+
+    <Timeline domain={domain} entries={entries} />
+
+    <section class="mt-16 max-w-3xl">
+      <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-neutral-100">
+        Build another timeline
+      </h2>
+      <SearchForm domain={domain} compact />
+    </section>
+  </div>
+</BaseLayout>

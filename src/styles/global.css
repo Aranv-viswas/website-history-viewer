@@ -1,0 +1,132 @@
+/*
+ * Website History Viewer — global styles (Tailwind CSS v4, CSS-first config)
+ * ---------------------------------------------------------------------------
+ * Tailwind v4 is configured directly in CSS. We:
+ *   1. Import the framework.
+ *   2. Register a class-based `dark` variant (toggle by adding `.dark` to <html>).
+ *   3. Define design tokens (brand color scale, fonts, radii) via @theme so they
+ *      become first-class utilities (e.g. `bg-brand-600`, `font-sans`).
+ */
+
+@import 'tailwindcss';
+
+/* Typography plugin powers the `prose` classes used on featured history pages
+   (MDX content). v4 loads plugins via the @plugin directive. */
+@plugin "@tailwindcss/typography";
+
+/* Class-based dark mode: `dark:` utilities apply when <html> (or an ancestor)
+   carries the `.dark` class. We still honor the OS preference via the inline
+   script in BaseLayout, but this gives users a manual toggle too. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Typography */
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Brand / primary accent — a strong, accessible blue scale */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  --color-brand-950: #172554;
+
+  /* Slightly larger default radius for a modern, soft feel */
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
+
+  /* Shared animations */
+  --animate-fade-in: fade-in 0.4s ease-out both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Base element defaults that respond to dark mode. Keeping these here means
+   every page gets sane background/foreground colors without repeating classes. */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-white text-neutral-900 antialiased;
+    @apply dark:bg-neutral-950 dark:text-neutral-100;
+    font-family: var(--font-sans);
+  }
+
+  /* Respect users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Accessible focus ring for keyboard users */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
+
+@layer components {
+  /* Reusable building blocks used across pages */
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* In Tailwind v4 `@apply` only accepts real utilities, not other custom
+     classes, so each button variant repeats the shared base utilities. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
+    @apply bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
+    @apply border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50;
+    @apply dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800;
+  }
+
+  .card {
+    @apply rounded-2xl border border-neutral-200 bg-white shadow-sm;
+    @apply dark:border-neutral-800 dark:bg-neutral-900;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none;
+    @apply dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300;
+  }
+}

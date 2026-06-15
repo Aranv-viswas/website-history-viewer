@@ -1,0 +1,116 @@
+---
+/**
+ * SearchForm — the primary call to action.
+ *
+ * Progressive enhancement: this is a plain GET form pointing at /search, which
+ * normalizes input and 302-redirects to the canonical /site/... or /compare
+ * URL. That means it works with zero client JavaScript. The "compare" second
+ * date field is revealed purely with CSS (Tailwind `peer` variant), so there is
+ * no island here at all — the only JS on the page is the header theme toggle.
+ */
+import { todayISO, currentYear } from '@utils/date';
+import { ARCHIVE_START_YEAR } from '@lib/constants';
+
+interface Props {
+  domain?: string;
+  dateA?: string;
+  dateB?: string;
+  compare?: boolean;
+  /** Compact variant for inner pages (smaller padding). */
+  compact?: boolean;
+}
+
+const {
+  domain = '',
+  dateA = `${currentYear() - 18}-01-01`,
+  dateB = todayISO(),
+  compare = false,
+  compact = false,
+} = Astro.props;
+
+const minDate = `${ARCHIVE_START_YEAR}-01-01`;
+const maxDate = todayISO();
+---
+
+<form
+  action="/search"
+  method="get"
+  class:list={[
+    'card mx-auto w-full max-w-3xl text-left',
+    compact ? 'p-4 sm:p-5' : 'p-5 sm:p-7',
+  ]}
+>
+  {/* Top-level peer: drives the CSS-only reveal of the second date field. */}
+  <input
+    id="compare"
+    name="compare"
+    type="checkbox"
+    value="1"
+    checked={compare}
+    class="peer sr-only"
+  />
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="sm:col-span-2">
+      <label class="label" for="domain">Website or domain</label>
+      <input
+        id="domain"
+        name="domain"
+        type="text"
+        inputmode="url"
+        autocomplete="off"
+        spellcheck="false"
+        required
+        value={domain}
+        placeholder="e.g. youtube.com"
+        class="input text-base"
+      />
+    </div>
+
+    <div>
+      <label class="label" for="date">Date</label>
+      <input
+        id="date"
+        name="date"
+        type="date"
+        value={dateA}
+        min={minDate}
+        max={maxDate}
+        required
+        class="input"
+      />
+    </div>
+
+    <div class="flex items-end">
+      <label
+        for="compare"
+        class="inline-flex w-full cursor-pointer select-none items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2.5 text-sm font-medium text-neutral-700 transition peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 dark:border-neutral-700 dark:text-neutral-300 dark:peer-checked:border-brand-500 dark:peer-checked:bg-brand-950 dark:peer-checked:text-brand-300"
+      >
+        <span
+          class="flex h-5 w-5 items-center justify-center rounded border border-current text-xs"
+          aria-hidden="true">⇄</span
+        >
+        Compare two dates
+      </label>
+    </div>
+  </div>
+
+  {/* Revealed only when the checkbox above is checked — no JS required. */}
+  <div class="mt-4 hidden peer-checked:block">
+    <label class="label" for="dateB">Second date (to compare against)</label>
+    <input
+      id="dateB"
+      name="dateB"
+      type="date"
+      value={dateB}
+      min={minDate}
+      max={maxDate}
+      class="input sm:max-w-xs"
+    />
+  </div>
+
+  <button type="submit" class="btn-primary mt-5 w-full text-base sm:w-auto">
+    View Snapshot
+    <span aria-hidden="true">→</span>
+  </button>
+</form>

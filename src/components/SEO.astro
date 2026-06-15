@@ -1,0 +1,70 @@
+---
+/**
+ * <SEO /> — renders all per-page <head> metadata:
+ * title, description, canonical, Open Graph, Twitter card, robots, JSON-LD.
+ *
+ * Drop it at the top of a layout's <head>. Sensible defaults come from SITE.
+ */
+import { SITE } from '@lib/constants';
+import { buildTitle, canonicalURL, absoluteImageURL } from '@lib/seo';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  /** Path or absolute URL for the canonical tag; defaults to the current URL. */
+  canonical?: string;
+  type?: 'website' | 'article';
+  /** Prevent indexing (used on transient/utility routes). */
+  noindex?: boolean;
+  /** One or more JSON-LD objects to embed as structured data. */
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
+
+const {
+  title,
+  description = SITE.description,
+  image = SITE.defaultOgImage,
+  canonical,
+  type = 'website',
+  noindex = false,
+  jsonLd,
+} = Astro.props;
+
+const fullTitle = buildTitle(title);
+const canonicalHref = canonicalURL(canonical ?? Astro.url.pathname);
+const ogImage = absoluteImageURL(image);
+const schemas = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalHref} />
+{noindex && <meta name="robots" content="noindex, nofollow" />}
+
+{/* Open Graph */}
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content={SITE.name} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonicalHref} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:locale" content={SITE.locale} />
+
+{/* Twitter */}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImage} />
+<meta name="twitter:site" content={SITE.twitter} />
+
+{/* Structured data */}
+{
+  schemas.map((schema) => (
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify(schema)}
+    />
+  ))
+}

@@ -1,0 +1,76 @@
+---
+/**
+ * ShareButtons — social sharing for snapshots and comparisons.
+ * Plain anchor links (no JS) for each network; the "Copy link" button uses a
+ * tiny inline script with a graceful fallback.
+ */
+interface Props {
+  url: string;
+  text: string;
+}
+
+const { url, text } = Astro.props;
+const enc = encodeURIComponent;
+const networks = [
+  {
+    name: 'X',
+    href: `https://twitter.com/intent/tweet?url=${enc(url)}&text=${enc(text)}`,
+    icon: '𝕏',
+  },
+  {
+    name: 'Facebook',
+    href: `https://www.facebook.com/sharer/sharer.php?u=${enc(url)}`,
+    icon: 'f',
+  },
+  {
+    name: 'Reddit',
+    href: `https://www.reddit.com/submit?url=${enc(url)}&title=${enc(text)}`,
+    icon: '🤖',
+  },
+  {
+    name: 'LinkedIn',
+    href: `https://www.linkedin.com/sharing/share-offsite/?url=${enc(url)}`,
+    icon: 'in',
+  },
+];
+---
+
+<div class="flex flex-wrap items-center gap-2">
+  <span class="mr-1 text-sm font-medium text-neutral-500">Share:</span>
+  {
+    networks.map((n) => (
+      <a
+        href={n.href}
+        target="_blank"
+        rel="noopener nofollow"
+        aria-label={`Share on ${n.name}`}
+        class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-sm font-bold text-neutral-700 transition hover:border-brand-400 hover:text-brand-600 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-brand-400"
+      >
+        {n.icon}
+      </a>
+    ))
+  }
+  <button
+    type="button"
+    data-copy-url={url}
+    class="btn-secondary h-9 px-3 text-sm"
+  >
+    <span class="copy-label">Copy link</span>
+  </button>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy-url]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const url = btn.getAttribute('data-copy-url') ?? location.href;
+      const label = btn.querySelector('.copy-label');
+      try {
+        await navigator.clipboard.writeText(url);
+        if (label) label.textContent = 'Copied!';
+        setTimeout(() => label && (label.textContent = 'Copy link'), 1800);
+      } catch {
+        if (label) label.textContent = 'Press Ctrl+C';
+      }
+    });
+  });
+</script>

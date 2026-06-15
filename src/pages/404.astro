@@ -1,0 +1,28 @@
+---
+/**
+ * 404 — friendly not-found page with a search affordance so users can recover.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import SearchForm from '@components/SearchForm.astro';
+---
+
+<BaseLayout
+  title="Page not found (404)"
+  description="The page you’re looking for doesn’t exist. Search for a website to see what it looked like in the past."
+  noindex
+>
+  <div class="container-page flex flex-col items-center py-20 text-center">
+    <p class="text-6xl font-extrabold text-brand-600 dark:text-brand-400">404</p>
+    <h1 class="mt-4 text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+      Lost in the archives
+    </h1>
+    <p class="mt-3 max-w-md text-neutral-600 dark:text-neutral-400">
+      We couldn’t find that page. Try searching for a website to see what it
+      looked like in the past.
+    </p>
+    <div class="mt-8 w-full max-w-xl">
+      <SearchForm />
+    </div>
+    <a href="/" class="btn-secondary mt-6">← Back home</a>
+  </div>
+</BaseLayout>
