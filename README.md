@@ -143,11 +143,21 @@ a homepage card.
 
 ## 🖼️ Open Graph image note
 
-The default social card (`public/og/default.svg`) is an SVG. Some networks (X,
-Facebook) prefer raster images. For best results, generate per-page PNG cards
-with [`astro-og-canvas`](https://github.com/delucis/astro-og-canvas) or
-[`@vercel/og`](https://vercel.com/docs/og-image-generation) and point
-`SITE.defaultOgImage` (in `src/lib/constants.ts`) at the PNG.
+The default social card is shipped as a raster PNG at `public/og/default.png`
+(1200×630), because X, Facebook, LinkedIn, Slack, and iMessage all reject SVG as
+an `og:image`. `public/og/default.svg` is kept as the editable source — after
+editing it, regenerate the PNG with:
+
+```sh
+node -e "const sharp=require('sharp'),fs=require('fs');sharp(fs.readFileSync('public/og/default.svg'),{density:200}).resize(1200,630).png().toFile('public/og/default.png')"
+```
+
+For per-snapshot social cards that show the actual archived page, configure a
+screenshot service via `SCREENSHOT_API_URL` (see `.env.example`); the
+`/site/[domain]/[date]` pages then set `og:image` to the rendered capture and
+fall back to this default when unconfigured. For fully generated per-page cards,
+[`astro-og-canvas`](https://github.com/delucis/astro-og-canvas) or
+[`@vercel/og`](https://vercel.com/docs/og-image-generation) are good upgrades.
 
 ## ▲ Deploy to Vercel
 

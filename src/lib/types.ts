@@ -58,6 +58,7 @@ export interface Screenshot {
 
 export type ScreenshotProviderName =
   | 'placeholder'
+  | 'api'
   | 'wayback-thumbnail'
   | 'playwright'
   | 'puppeteer'

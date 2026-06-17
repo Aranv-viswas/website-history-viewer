@@ -2,37 +2,43 @@
 /**
  * Site footer: brand blurb, quick links to featured histories, and credits.
  */
-import { POPULAR_SITES, SITE } from '@lib/constants';
+import { POPULAR_SITES, SITE, LEGAL_PAGES } from '@lib/constants';
+import { getLang, useTranslations, localizeHref } from '@i18n/utils';
 
 const year = new Date().getUTCFullYear();
 const histories = POPULAR_SITES.slice(0, 6);
+
+const lang = getLang(Astro);
+const t = useTranslations(lang);
+/** Localize an internal link to the active locale (tool routes stay canonical). */
+const L = (path: string) => localizeHref(path, lang);
 ---
 
 <footer
-  class="mt-16 border-t border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/50"
+  class="mt-24 border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
 >
-  <div class="container-page grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="container-page grid gap-10 py-16 sm:grid-cols-2 lg:grid-cols-4">
     <div class="sm:col-span-2 lg:col-span-1">
-      <a href="/" class="flex items-center gap-2 font-extrabold">
+      <a
+        href={L('/')}
+        class="flex items-center gap-2 font-semibold text-neutral-900 dark:text-neutral-100"
+      >
         <span aria-hidden="true">⏳</span> {SITE.name}
       </a>
-      <p class="mt-3 max-w-xs text-sm text-neutral-600 dark:text-neutral-400">
-        Travel through internet history with archived screenshots from the
-        Internet Archive Wayback Machine.
+      <p class="mt-3 max-w-xs text-sm text-neutral-500 dark:text-neutral-400">
+        {t('footer.tagline')}
       </p>
     </div>
 
-    <nav aria-label="Featured histories">
-      <h2 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-        Featured histories
-      </h2>
-      <ul class="mt-3 space-y-2 text-sm">
+    <nav aria-label={t('footer.featured')}>
+      <h2 class="eyebrow">{t('footer.featured')}</h2>
+      <ul class="mt-4 space-y-2.5 text-sm">
         {
           histories.map((site) => (
             <li>
               <a
-                href={`/${site.domain.split('.')[0]}-history`}
-                class="text-neutral-600 hover:text-brand-600 dark:text-neutral-400 dark:hover:text-brand-400"
+                href={L(`/${site.domain.split('.')[0]}-history`)}
+                class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
               >
                 {site.name} history
               </a>
@@ -42,58 +48,67 @@ const histories = POPULAR_SITES.slice(0, 6);
       </ul>
     </nav>
 
-    <nav aria-label="Explore">
-      <h2 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-        Explore
-      </h2>
-      <ul class="mt-3 space-y-2 text-sm">
+    <nav aria-label={t('footer.explore')}>
+      <h2 class="eyebrow">{t('footer.explore')}</h2>
+      <ul class="mt-4 space-y-2.5 text-sm">
         <li>
           <a
-            href="/compare"
-            class="text-neutral-600 hover:text-brand-600 dark:text-neutral-400 dark:hover:text-brand-400"
-            >Compare two versions</a
+            href={L('/compare')}
+            class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            >{t('footer.compare')}</a
           >
         </li>
         <li>
           <a
-            href="/timeline/google.com"
-            class="text-neutral-600 hover:text-brand-600 dark:text-neutral-400 dark:hover:text-brand-400"
-            >Build a timeline</a
+            href={L('/timeline/google.com')}
+            class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            >{t('footer.timeline')}</a
           >
         </li>
         <li>
           <a
-            href="/#examples"
-            class="text-neutral-600 hover:text-brand-600 dark:text-neutral-400 dark:hover:text-brand-400"
-            >Popular examples</a
+            href={L('/#examples')}
+            class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            >{t('footer.examples')}</a
           >
         </li>
       </ul>
     </nav>
 
-    <div>
-      <h2 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-        About
-      </h2>
-      <p class="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+    <nav aria-label={t('footer.company')}>
+      <h2 class="eyebrow">{t('footer.company')}</h2>
+      <ul class="mt-4 space-y-2.5 text-sm">
+        {
+          LEGAL_PAGES.map((page) => (
+            <li>
+              <a
+                href={L(page.href)}
+                class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+              >
+                {page.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="mt-4 text-xs text-neutral-500 dark:text-neutral-400">
         Snapshots are provided by the
         <a
           href="https://web.archive.org/"
           rel="noopener"
-          class="underline hover:text-brand-600 dark:hover:text-brand-400"
+          class="text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
           >Internet Archive</a
-        >. This is an independent project and is not affiliated with the
-        Internet Archive.
+        >. Independent project; not affiliated with the Internet Archive.
       </p>
-    </div>
+    </nav>
   </div>
 
   <div class="border-t border-neutral-200 dark:border-neutral-800">
     <div
       class="container-page flex flex-col items-center justify-between gap-2 py-6 text-xs text-neutral-500 sm:flex-row"
     >
-      <p>© {year} {SITE.name}. All rights reserved.</p>
-      <p>Data: Internet Archive Wayback Machine.</p>
+      <p>© {year} {SITE.name}. {t('footer.rights')}</p>
+      <p>{t('footer.dataCredit')}</p>
     </div>
   </div>
 </footer>

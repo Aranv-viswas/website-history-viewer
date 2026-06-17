@@ -16,7 +16,10 @@ Allow: /
 # Don't crawl the cache directory
 Disallow: /cache/
 
-Sitemap: ${base}/sitemap-index.xml
+# Arbitrary on-demand snapshot pages — not worth crawling at scale.
+Disallow: /site/
+
+Sitemap: ${base}/sitemap.xml
 `;
   return new Response(body, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },

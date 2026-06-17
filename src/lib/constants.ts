@@ -11,12 +11,47 @@ export const SITE = {
   /** Canonical URL — kept in sync with astro.config.mjs `site`. */
   url: import.meta.env.PUBLIC_SITE_URL ?? 'https://websitehistoryviewer.com',
   description:
-    'See what any website looked like in the past. Travel through internet history with archived screenshots from the Wayback Machine, and compare versions side by side.',
-  defaultOgImage: '/og/default.svg',
+    'Free website history viewer to check website history and see what any site looked like in the past. Track, look up and view website history with archived Wayback Machine screenshots.',
+  /** Default keyword set surfaced in <meta name="keywords">. */
+  keywords: [
+    'website history',
+    'website history viewer',
+    'website history check',
+    'website history tracker',
+    'website history lookup',
+    'website history checker',
+    'how to see website history on iphone',
+    'website history archive',
+    'website history google',
+    'check website history',
+    'see website history',
+    'how to see website history',
+    'apple website history',
+    'website history search',
+    'view website history',
+  ],
+  defaultOgImage: '/og/default.png',
   twitter: '@webhistoryview',
   locale: 'en_US',
-  themeColor: '#2563eb',
+  themeColor: '#ffffff',
+  /** Contact address surfaced on the Contact and legal pages. */
+  email: 'arnab47biswas@gmail.com',
 } as const;
+
+/**
+ * Static "company" pages linked from the header and footer. Kept here so the
+ * navigation and the routes stay in sync, and so the date used on the legal
+ * pages has a single source of truth.
+ */
+export const LEGAL_PAGES: Array<{ href: string; label: string }> = [
+  { href: '/about', label: 'About Us' },
+  { href: '/contact', label: 'Contact Us' },
+  { href: '/privacy-policy', label: 'Privacy Policy' },
+  { href: '/terms', label: 'Terms & Conditions' },
+];
+
+/** Last-updated date shown on the Privacy Policy and Terms pages. */
+export const LEGAL_LAST_UPDATED = 'June 16, 2026';
 
 /**
  * Popular sites used for homepage example links and as the seed for featured

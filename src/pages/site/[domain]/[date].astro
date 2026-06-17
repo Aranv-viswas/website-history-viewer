@@ -42,10 +42,19 @@ const screenshot = await getWebsiteScreenshot(snapshot.archivedUrl, {
   alt: `Screenshot of ${name} on ${niceDate}, from the Wayback Machine`,
 });
 
-const title = `What Did ${name} Look Like In ${year}?`;
+// Let Vercel's CDN serve this SSR page. Snapshot data is immutable, so found
+// captures cache for a day; misses cache briefly so a later capture can appear.
+Astro.response.headers.set(
+  'Cache-Control',
+  snapshot.available
+    ? 'public, s-maxage=86400, stale-while-revalidate=604800'
+    : 'public, s-maxage=300, stale-while-revalidate=600'
+);
+
+const title = `${name} Website History in ${year} — What ${name} Looked Like`;
 const description = snapshot.available
-  ? `See an archived screenshot of ${name} from ${niceDate} and compare it with today’s version. Browse ${name}'s history on the Wayback Machine.`
-  : `We couldn’t find an archived snapshot of ${name} for ${niceDate}. Try a different date or explore ${name}'s timeline.`;
+  ? `Check ${name}'s website history for ${niceDate}. See an archived screenshot from the Wayback Machine and compare it with today’s version — view website history and track how ${name} changed.`
+  : `We couldn’t find an archived snapshot of ${name} for ${niceDate}. Try a different date or explore the full ${name} website history timeline.`;
 
 const slug = domainToSlug(domain);
 const canonicalPath = `/site/${slug}/${date}`;
@@ -63,17 +72,18 @@ const breadcrumb = breadcrumbJsonLd([
   title={title}
   description={description}
   type="article"
+  image={screenshot.imageUrl ?? undefined}
   noindex={!snapshot.available}
   jsonLd={breadcrumb}
 >
   <div class="container-page py-10">
     {/* Breadcrumb */}
     <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
-      <a href="/" class="hover:text-brand-600 dark:hover:text-brand-400">Home</a>
+      <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100">Home</a>
       <span class="mx-2">/</span>
       <a
         href={`/timeline/${slug}`}
-        class="hover:text-brand-600 dark:hover:text-brand-400">{name} timeline</a
+        class="hover:text-neutral-900 dark:hover:text-neutral-100">{name} timeline</a
       >
       <span class="mx-2">/</span>
       <span class="text-neutral-700 dark:text-neutral-300">{year}</span>
@@ -81,7 +91,7 @@ const breadcrumb = breadcrumbJsonLd([
 
     <header class="mb-6">
       <h1
-        class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+        class="text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
       >
         {name} in {year}
       </h1>
@@ -134,7 +144,7 @@ const breadcrumb = breadcrumbJsonLd([
 
     {/* Metadata */}
     <dl
-      class="mt-8 grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-sm sm:grid-cols-3 dark:border-neutral-800 dark:bg-neutral-900/40"
+      class="mt-8 grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-5 text-sm sm:grid-cols-3 dark:border-neutral-800 dark:bg-neutral-900/40"
     >
       <div>
         <dt class="font-medium text-neutral-500">Website</dt>
@@ -167,7 +177,7 @@ const breadcrumb = breadcrumbJsonLd([
 
     {/* Change the query */}
     <section class="mt-12">
-      <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-neutral-100">
+      <h2 class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
         Look up another date or website
       </h2>
       <SearchForm domain={domain} dateA={date} compact />

@@ -31,15 +31,15 @@ const posterB = placeholderPoster(labelB, b.screenshot.width, b.screenshot.heigh
   <input type="radio" name="cmp-mode" id="cmp-side" class="peer/side sr-only" checked />
   <input type="radio" name="cmp-mode" id="cmp-slide" class="peer/slide sr-only" />
 
-  <div class="mb-5 inline-flex rounded-lg border border-neutral-300 p-1 dark:border-neutral-700">
+  <div class="mb-5 inline-flex rounded-full border border-neutral-200 p-1 dark:border-neutral-800">
     <label
       for="cmp-side"
-      class="cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium text-neutral-600 peer-checked/side:bg-brand-600 peer-checked/side:text-white dark:text-neutral-300"
+      class="cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium text-neutral-600 peer-checked/side:bg-neutral-900 peer-checked/side:text-white dark:text-neutral-300 dark:peer-checked/side:bg-white dark:peer-checked/side:text-neutral-900"
       >Side by side</label
     >
     <label
       for="cmp-slide"
-      class="cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium text-neutral-600 peer-checked/slide:bg-brand-600 peer-checked/slide:text-white dark:text-neutral-300"
+      class="cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium text-neutral-600 peer-checked/slide:bg-neutral-900 peer-checked/slide:text-white dark:text-neutral-300 dark:peer-checked/slide:bg-white dark:peer-checked/slide:text-neutral-900"
       >Slider</label
     >
   </div>
@@ -78,7 +78,8 @@ const posterB = placeholderPoster(labelB, b.screenshot.width, b.screenshot.heigh
       a.snapshot.available && b.snapshot.available ? (
         <div
           id="cmp-slider"
-          class="relative aspect-[16/10] w-full select-none overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800"
+          data-fullscreen-target
+          class="group relative aspect-[16/10] w-full select-none overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800"
           style="--pos:50%"
         >
           {/* Bottom layer: B ("after") */}
@@ -129,6 +130,44 @@ const posterB = placeholderPoster(labelB, b.screenshot.width, b.screenshot.heigh
           {/* Labels */}
           <span class="absolute top-2 left-2 z-10 rounded bg-black/60 px-2 py-0.5 text-xs font-medium text-white">{labelA}</span>
           <span class="absolute top-2 right-2 z-10 rounded bg-black/60 px-2 py-0.5 text-xs font-medium text-white">{labelB}</span>
+
+          {/* Fullscreen toggle (sits above the range input, which is z-20) */}
+          <button
+            type="button"
+            data-fullscreen-btn
+            title="View fullscreen"
+            aria-label="View fullscreen"
+            class="absolute top-2 right-1/2 z-30 translate-x-1/2 rounded-md bg-black/55 p-1.5 text-white opacity-0 backdrop-blur-sm transition hover:bg-black/75 focus:opacity-100 focus-visible:outline-none group-hover:opacity-100"
+          >
+            <svg
+              data-fs-icon="enter"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3" />
+            </svg>
+            <svg
+              data-fs-icon="exit"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="hidden h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+            </svg>
+          </button>
 
           {/* Range input drives --pos */}
           <input

@@ -40,6 +40,7 @@ const capturedLabel = snapshot.timestamp
 
 <figure class="group relative">
   <div
+    data-fullscreen-target
     class:list={[
       'relative w-full overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900',
       aspectClass,
@@ -67,6 +68,8 @@ const capturedLabel = snapshot.timestamp
           alt={screenshot.alt}
           loading={loading}
           decoding="async"
+          data-frame-media
+          onerror={`this.onerror=null;this.src=${JSON.stringify(poster)}`}
           class="h-full w-full object-cover object-top"
         />
       ) : screenshot.useIframe && screenshot.iframeUrl ? (
@@ -76,6 +79,7 @@ const capturedLabel = snapshot.timestamp
           loading={loading}
           referrerpolicy="no-referrer"
           sandbox="allow-scripts allow-same-origin allow-popups"
+          data-frame-media
           style={`background-image:url("${poster}");background-size:cover;`}
           class="h-full w-full border-0"
         />
@@ -88,6 +92,62 @@ const capturedLabel = snapshot.timestamp
           loading={loading}
           class="h-full w-full object-cover"
         />
+      )
+    }
+
+    {/* Loading overlay — visible until the media fires `load` (see script). */}
+    {
+      snapshot.available && (screenshot.imageUrl || screenshot.iframeUrl) && (
+        <div
+          data-frame-loader
+          class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-neutral-100/80 backdrop-blur-sm transition-opacity duration-500 dark:bg-neutral-900/80"
+        >
+          <div class="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-brand-600 dark:border-neutral-700 dark:border-t-brand-400" />
+          <span class="text-xs font-medium text-neutral-500">
+            Loading snapshot…
+          </span>
+        </div>
+      )
+    }
+
+    {
+      snapshot.available && (screenshot.imageUrl || screenshot.iframeUrl) && (
+        <button
+          type="button"
+          data-fullscreen-btn
+          title="View fullscreen"
+          aria-label="View fullscreen"
+          class="absolute top-2 right-2 z-20 rounded-md bg-black/55 p-1.5 text-white opacity-0 backdrop-blur-sm transition hover:bg-black/75 focus:opacity-100 focus-visible:outline-none group-hover:opacity-100"
+        >
+          <svg
+            data-fs-icon="enter"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3" />
+          </svg>
+          <svg
+            data-fs-icon="exit"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="hidden h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+          </svg>
+        </button>
       )
     }
   </div>
@@ -110,3 +170,97 @@ const capturedLabel = snapshot.timestamp
     }
   </figcaption>
 </figure>
+
+{/*
+  Fullscreen support, shared by every preview that opts in via
+  `data-fullscreen-target` (here, plus the comparison slider). A single
+  delegated handler covers all instances on the page, and the styles stretch
+  the framed iframe/image to fill the viewport while fullscreen.
+*/}
+<style is:global>
+  [data-fullscreen-target]:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    aspect-ratio: auto;
+    background: #000;
+  }
+  [data-fullscreen-target]:fullscreen iframe,
+  [data-fullscreen-target]:fullscreen img {
+    height: 100%;
+    width: 100%;
+  }
+  [data-fullscreen-target]:fullscreen img {
+    object-fit: contain;
+  }
+</style>
+
+<script>
+  // Hide each preview's loading overlay once its media loads. Covers every
+  // ScreenshotFrame on the page (Astro bundles this script once). A blocked or
+  // slow iframe may never fire `load`, so a timeout retires the spinner anyway.
+  function initFrameLoaders() {
+    document
+      .querySelectorAll<HTMLElement>('[data-frame-media]')
+      .forEach((media) => {
+        const wrap = media.closest('[data-fullscreen-target]');
+        const loader = wrap?.querySelector<HTMLElement>('[data-frame-loader]');
+        if (!loader) return;
+
+        let done = false;
+        const hide = () => {
+          if (done) return;
+          done = true;
+          loader.classList.add('opacity-0');
+          window.setTimeout(() => loader.classList.add('hidden'), 500);
+        };
+
+        // Image already decoded from cache — no `load` event will fire.
+        if (
+          media instanceof HTMLImageElement &&
+          media.complete &&
+          media.naturalWidth > 0
+        ) {
+          hide();
+          return;
+        }
+
+        media.addEventListener('load', hide, { once: true });
+        media.addEventListener('error', hide, { once: true });
+        window.setTimeout(hide, 15000);
+      });
+  }
+  initFrameLoaders();
+
+  // Toggle native fullscreen on the framed preview a button lives inside.
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as Element)?.closest?.('[data-fullscreen-btn]');
+    if (!btn) return;
+    // Previews can be wrapped in links (e.g. the timeline) — don't navigate.
+    e.preventDefault();
+    e.stopPropagation();
+
+    const target = btn.closest('[data-fullscreen-target]');
+    if (!target) return;
+
+    if (document.fullscreenElement === target) {
+      document.exitFullscreen?.();
+    } else {
+      (target as HTMLElement).requestFullscreen?.().catch(() => {});
+    }
+  });
+
+  // Swap the enter/exit icon to match the current fullscreen state.
+  document.addEventListener('fullscreenchange', () => {
+    const active = document.fullscreenElement;
+    document.querySelectorAll('[data-fullscreen-target]').forEach((el) => {
+      const on = el === active;
+      el.querySelectorAll('[data-fs-icon="enter"]').forEach((n) =>
+        n.classList.toggle('hidden', on)
+      );
+      el.querySelectorAll('[data-fs-icon="exit"]').forEach((n) =>
+        n.classList.toggle('hidden', !on)
+      );
+    });
+  });
+</script>

@@ -16,9 +16,17 @@ import {
   INTERNET_HISTORY_FACTS,
   SITE,
 } from '@lib/constants';
-import { websiteJsonLd } from '@lib/seo';
+import { websiteJsonLd, faqJsonLd } from '@lib/seo';
 import { domainToSlug } from '@utils/domain';
 import { yearToISO, currentYear, todayISO } from '@utils/date';
+import { getLang, useTranslations, localizeHref } from '@i18n/utils';
+import { getContent } from '@i18n/content';
+
+const lang = getLang(Astro);
+const t = useTranslations(lang);
+const c = getContent(lang);
+/** Localize an internal link to the active locale (tool routes stay canonical). */
+const L = (path: string) => localizeHref(path, lang);
 
 const histories = (await getCollection('histories')).sort(
   (a, b) => b.data.weight - a.data.weight
@@ -26,33 +34,48 @@ const histories = (await getCollection('histories')).sort(
 
 const year = currentYear();
 const today = todayISO();
+
+/* FAQ targeting long-tail question keywords (rich-result eligible via JSON-LD). */
+const FAQS = c.home.faq;
 ---
 
 <BaseLayout
-  title="See What Any Website Looked Like In The Past"
+  title={c.home.metaTitle}
   description={SITE.description}
-  jsonLd={websiteJsonLd()}
+  jsonLd={[websiteJsonLd(), faqJsonLd(FAQS)]}
 >
   {/* ---------------- Hero ---------------- */}
   <section
-    class="relative overflow-hidden border-b border-neutral-200 bg-gradient-to-b from-brand-50 to-white dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950"
+    class="relative overflow-hidden border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
   >
-    <div class="container-page py-16 text-center sm:py-24">
+    {/* The brand's signature mesh gradient — its only decorative chrome, at
+        hero scale, occupying the top of the band and fading into canvas. */}
+    <div
+      class="mesh-gradient pointer-events-none absolute inset-x-0 top-0 -z-0 h-[70%] opacity-70"
+      aria-hidden="true"
+    >
+    </div>
+    <div
+      class="pointer-events-none absolute inset-x-0 bottom-0 -z-0 h-1/2 bg-gradient-to-b from-transparent to-white dark:to-neutral-950"
+      aria-hidden="true"
+    >
+    </div>
+
+    <div class="relative container-page py-20 text-center sm:py-28">
       <p
-        class="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/70 px-3 py-1 text-sm font-medium text-brand-700 dark:border-brand-900 dark:bg-neutral-900 dark:text-brand-300"
+        class="mb-5 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/70 px-3 py-1 font-mono text-xs tracking-wide text-neutral-600 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400"
       >
-        🕰️ Powered by the Internet Archive Wayback Machine
+        {t('hero.badge')}
       </p>
       <h1
-        class="mx-auto max-w-4xl text-balance text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-6xl dark:text-neutral-50"
+        class="mx-auto max-w-4xl text-balance text-4xl font-semibold tracking-tighter text-neutral-900 sm:text-6xl dark:text-neutral-50"
       >
-        See What Any Website Looked Like In The Past
+        {t('hero.title')}
       </h1>
       <p
-        class="mx-auto mt-5 max-w-2xl text-pretty text-lg text-neutral-600 dark:text-neutral-400"
+        class="mx-auto mt-6 max-w-2xl text-pretty text-lg text-neutral-600 dark:text-neutral-400"
       >
-        Travel through internet history. Compare Google, YouTube, Facebook,
-        Amazon and millions of other websites across time.
+        {t('hero.subtitle')}
       </p>
 
       <div class="mt-10">
@@ -64,12 +87,12 @@ const today = todayISO();
         class="mt-8 flex flex-wrap items-center justify-center gap-2 text-sm"
         aria-label="Popular examples"
       >
-        <span class="text-neutral-500">Try:</span>
+        <span class="font-mono text-xs text-neutral-500">{t('hero.try')}</span>
         {
           POPULAR_SITES.slice(0, 5).map((site) => (
             <a
-              href={`/site/${domainToSlug(site.domain)}/${yearToISO(site.year)}`}
-              class="rounded-full border border-neutral-300 bg-white px-3 py-1 font-medium text-neutral-700 transition hover:border-brand-400 hover:text-brand-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:text-brand-400"
+              href={L(`/site/${domainToSlug(site.domain)}/${yearToISO(site.year)}`)}
+              class="rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
             >
               {site.name} {site.year}
             </a>
@@ -80,21 +103,24 @@ const today = todayISO();
   </section>
 
   {/* ---------------- Recently viewed (client-populated) ---------------- */}
-  <section id="recent" class="container-page hidden py-10">
-    <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-neutral-100">
-      Recently viewed
+  <section id="recent" class="container-page hidden py-12">
+    <h2 class="mb-5 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+      {c.home.recentHeading}
     </h2>
     <div id="recent-list" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"></div>
   </section>
 
   {/* ---------------- Popular examples ---------------- */}
-  <section id="examples" class="container-page py-14">
-    <div class="mb-8 text-center">
-      <h2 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-        Popular examples
+  <section id="examples" class="container-page py-20">
+    <div class="mb-10 text-center">
+      <p class="eyebrow">{c.home.examples.eyebrow}</p>
+      <h2
+        class="mt-3 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"
+      >
+        {c.home.examples.heading}
       </h2>
-      <p class="mt-2 text-neutral-600 dark:text-neutral-400">
-        Jump straight into a classic snapshot.
+      <p class="mt-3 text-neutral-600 dark:text-neutral-400">
+        {c.home.examples.sub}
       </p>
     </div>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -103,22 +129,25 @@ const today = todayISO();
   </section>
 
   {/* ---------------- Popular comparisons ---------------- */}
-  <section class="border-y border-neutral-200 bg-neutral-50 py-14 dark:border-neutral-800 dark:bg-neutral-900/40">
+  <section class="border-y border-neutral-200 bg-white py-20 dark:border-neutral-800 dark:bg-neutral-950">
     <div class="container-page">
-      <div class="mb-8 text-center">
-        <h2 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-          Popular comparisons
+      <div class="mb-10 text-center">
+        <p class="eyebrow">{c.home.comparisons.eyebrow}</p>
+        <h2
+          class="mt-3 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"
+        >
+          {c.home.comparisons.heading}
         </h2>
-        <p class="mt-2 text-neutral-600 dark:text-neutral-400">
-          See how the giants changed — then vs. today.
+        <p class="mt-3 text-neutral-600 dark:text-neutral-400">
+          {c.home.comparisons.sub}
         </p>
       </div>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {
           POPULAR_COMPARISONS.map((c) => (
             <a
-              href={`/compare?domain=${encodeURIComponent(c.domain)}&a=${yearToISO(c.yearA)}&b=${today}`}
-              class="card flex items-center justify-between gap-3 p-5 transition hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-md"
+              href={L(`/compare?domain=${encodeURIComponent(c.domain)}&a=${yearToISO(c.yearA)}&b=${today}`)}
+              class="card flex items-center justify-between gap-3 p-5 transition hover:border-neutral-300 hover:shadow-card-hover dark:hover:border-neutral-700"
             >
               <div>
                 <h3 class="font-semibold text-neutral-900 dark:text-neutral-100">
@@ -139,33 +168,36 @@ const today = todayISO();
   </section>
 
   {/* ---------------- Trending websites / featured histories ---------------- */}
-  <section class="container-page py-14">
-    <div class="mb-8 text-center">
-      <h2 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-        Trending website histories
+  <section class="container-page py-20">
+    <div class="mb-10 text-center">
+      <p class="eyebrow">{c.home.trending.eyebrow}</p>
+      <h2
+        class="mt-3 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"
+      >
+        {c.home.trending.heading}
       </h2>
-      <p class="mt-2 text-neutral-600 dark:text-neutral-400">
-        Deep-dive design evolutions of the web’s most iconic sites.
+      <p class="mt-3 text-neutral-600 dark:text-neutral-400">
+        {c.home.trending.sub}
       </p>
     </div>
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {
         histories.map((h) => (
           <a
-            href={`/${h.id}-history`}
-            class="card group flex flex-col p-6 transition hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-md"
+            href={L(`/${h.id}-history`)}
+            class="card group flex flex-col p-6 transition hover:border-neutral-300 hover:shadow-card-hover dark:hover:border-neutral-700"
           >
             <span class="text-3xl" aria-hidden="true">
               {h.data.emoji}
             </span>
-            <h3 class="mt-3 text-lg font-bold text-neutral-900 dark:text-neutral-100">
+            <h3 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
               {h.data.name} history
             </h3>
             <p class="mt-1 line-clamp-3 text-sm text-neutral-600 dark:text-neutral-400">
               {h.data.description}
             </p>
             <span class="mt-4 text-sm font-medium text-brand-600 group-hover:underline dark:text-brand-400">
-              Explore the evolution →
+              {c.home.exploreEvolution}
             </span>
           </a>
         ))
@@ -176,28 +208,68 @@ const today = todayISO();
   {/* ---------------- Internet history facts ---------------- */}
   <section
     id="facts"
-    class="border-t border-neutral-200 bg-neutral-50 py-14 dark:border-neutral-800 dark:bg-neutral-900/40"
+    class="border-t border-neutral-200 bg-white py-20 dark:border-neutral-800 dark:bg-neutral-950"
   >
     <div class="container-page">
-      <div class="mb-8 text-center">
-        <h2 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-          Internet history facts
+      <div class="mb-10 text-center">
+        <p class="eyebrow">{c.home.facts.eyebrow}</p>
+        <h2
+          class="mt-3 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"
+        >
+          {c.home.facts.heading}
         </h2>
-        <p class="mt-2 text-neutral-600 dark:text-neutral-400">
-          A few milestones from the story of the web.
+        <p class="mt-3 text-neutral-600 dark:text-neutral-400">
+          {c.home.facts.sub}
         </p>
       </div>
       <div class="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2">
         {
           INTERNET_HISTORY_FACTS.map((f) => (
             <div class="card flex gap-4 p-5">
-              <span class="text-xl font-extrabold text-brand-600 dark:text-brand-400">
+              <span class="font-mono text-xl font-medium text-brand-600 dark:text-brand-400">
                 {f.year}
               </span>
               <p class="text-sm text-neutral-700 dark:text-neutral-300">
                 {f.fact}
               </p>
             </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  {/* ---------------- Long-form SEO content ---------------- */}
+  <section id="about" class="container-page py-14">
+    <div
+      class="prose-seo mx-auto max-w-3xl text-neutral-700 dark:text-neutral-300"
+      set:html={c.home.longformHtml}
+    >
+    </div>
+  </section>
+
+  {/* ---------------- FAQ (rich-result eligible) ---------------- */}
+  <section
+    id="faq"
+    class="border-t border-neutral-200 bg-white py-20 dark:border-neutral-800 dark:bg-neutral-950"
+  >
+    <div class="container-page mx-auto max-w-3xl">
+      <h2
+        class="mb-8 text-center text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"
+      >
+        {c.home.faqHeading}
+      </h2>
+      <div class="space-y-4">
+        {
+          FAQS.map((f) => (
+            <details class="card group p-5">
+              <summary class="cursor-pointer list-none font-semibold text-neutral-900 dark:text-neutral-100">
+                {f.question}
+              </summary>
+              <p class="mt-3 text-neutral-700 dark:text-neutral-300">
+                {f.answer}
+              </p>
+            </details>
           ))
         }
       </div>
@@ -219,7 +291,7 @@ const today = todayISO();
           .slice(0, 4)
           .map(
             (it) => `
-            <a href="${it.href}" class="card p-4 block hover:border-brand-400 transition">
+            <a href="${it.href}" class="card p-4 block transition hover:border-neutral-300 hover:shadow-card-hover dark:hover:border-neutral-700">
               <p class="font-semibold text-neutral-900 dark:text-neutral-100">${it.name}</p>
               <p class="text-sm text-neutral-500">${it.date}</p>
               <span class="text-sm text-brand-600 dark:text-brand-400">View again →</span>

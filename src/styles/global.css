@@ -1,11 +1,14 @@
 /*
  * Website History Viewer — global styles (Tailwind CSS v4, CSS-first config)
  * ---------------------------------------------------------------------------
- * Tailwind v4 is configured directly in CSS. We:
- *   1. Import the framework.
- *   2. Register a class-based `dark` variant (toggle by adding `.dark` to <html>).
- *   3. Define design tokens (brand color scale, fonts, radii) via @theme so they
- *      become first-class utilities (e.g. `bg-brand-600`, `font-sans`).
+ * Styled after the Vercel design language (see DESIGN.md):
+ *   - Stark ink-on-near-white system; black `#171717` is the conversion target.
+ *   - Blue `#0070f3` is the link / accent only — never the primary CTA.
+ *   - Marketing CTAs are 100px pills; cards sit on hairline borders + subtle
+ *     STACKED shadows (never one heavy drop).
+ *   - Geometric sans (Inter) for everything narrative; monospace (JetBrains
+ *     Mono) for technical eyebrows, labels, and code. Display ceiling is 600.
+ *   - The multi-stop mesh gradient is the only decorative chrome, hero-scale.
  */
 
 @import 'tailwindcss';
@@ -20,29 +23,41 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Typography */
+  /* Typography — the brand's geometric sans + monospaced technical face.
+     Open-source substitutes for the proprietary Geist / Geist Mono. */
   --font-sans:
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     Helvetica, Arial, sans-serif;
   --font-mono:
     'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Brand / primary accent — a strong, accessible blue scale */
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c5fd;
-  --color-brand-400: #60a5fa;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
-  --color-brand-950: #172554;
+  /* Accent / link blue (`--ds-blue`). The brand's primary link color — it is
+     NOT the primary CTA (that role belongs to ink black). */
+  --color-brand-50: #f0f7ff;
+  --color-brand-100: #d3e5ff;
+  --color-brand-200: #aecbff;
+  --color-brand-300: #7eb0ff;
+  --color-brand-400: #4596ff;
+  --color-brand-500: #0091ff;
+  --color-brand-600: #0070f3;
+  --color-brand-700: #0761d1;
+  --color-brand-800: #0852a8;
+  --color-brand-900: #093d7a;
+  --color-brand-950: #06203f;
 
-  /* Slightly larger default radius for a modern, soft feel */
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1.25rem;
+  /* Radii — `sm` 6px is the brand's in-app `--geist-radius`; `md` 8px the
+     `--geist-marketing-radius`; `xl` the larger card chrome. */
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+
+  /* Stacked, subtle elevation (DESIGN.md "Elevation & Depth").
+     Multiple small offsets + an inset hairline ring — never a heavy drop. */
+  --shadow-card:
+    0 0 0 1px #00000014 inset, 0 1px 1px #00000005, 0 2px 2px #0000000a;
+  --shadow-card-hover:
+    0 0 0 1px #00000014 inset, 0 2px 2px #0000000a, 0 8px 8px -8px #0000000a;
+  --shadow-float:
+    0 0 0 1px #00000014 inset, 0 2px 2px #0000000a, 0 8px 16px -4px #0000000a;
 
   /* Shared animations */
   --animate-fade-in: fade-in 0.4s ease-out both;
@@ -68,9 +83,28 @@
   }
 
   body {
-    @apply bg-white text-neutral-900 antialiased;
+    /* canvas-soft (#fafafa) page body; ink (#171717 ≈ neutral-900) text. */
+    @apply bg-neutral-50 text-neutral-900 antialiased;
     @apply dark:bg-neutral-950 dark:text-neutral-100;
     font-family: var(--font-sans);
+    /* Enable Inter's geometric alternates to better echo the brand sans. */
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  /* Display type is sentence-case, weight 600, aggressively negative-tracked —
+     the core of the brand voice. Weight 600 is the ceiling; never heavier. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  /* The brand's selection treatment: ink fill, near-white text. */
+  ::selection {
+    background: #171717;
+    color: #f2f2f2;
   }
 
   /* Respect users who prefer reduced motion */
@@ -91,6 +125,19 @@
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand-500;
   }
+
+  /* Tailwind v4's Preflight follows the native default of `cursor: default`
+     on <button>, so buttons no longer show the pointer affordance. Restore it
+     for all interactive controls (disabled ones keep the not-allowed cursor). */
+  button:not(:disabled),
+  [role='button']:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {
@@ -99,34 +146,69 @@
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
   }
 
-  /* In Tailwind v4 `@apply` only accepts real utilities, not other custom
-     classes, so each button variant repeats the shared base utilities. */
+  /* ── Buttons ───────────────────────────────────────────────────────────
+     Marketing-scale CTAs are 100px pills. Primary IS ink black — the single
+     conversion target; secondary is a white pill held by a hairline. Labels
+     set in the geometric sans at weight 500 (button typography).
+     In Tailwind v4 `@apply` only accepts real utilities, not other custom
+     classes, so each variant repeats the shared base utilities. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
-    @apply bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
+    @apply bg-neutral-900 text-white hover:bg-neutral-700 active:bg-neutral-800;
+    @apply dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
-    @apply border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50;
-    @apply dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
+    @apply border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50;
+    @apply dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800;
   }
 
+  /* ── Cards ────────────────────────────────────────────────────────────
+     Hairline border + stacked subtle shadow; the brand's "you can see this
+     card" cue without material-heavy float. */
   .card {
-    @apply rounded-2xl border border-neutral-200 bg-white shadow-sm;
+    @apply rounded-xl border border-neutral-200 bg-white shadow-card;
     @apply dark:border-neutral-800 dark:bg-neutral-900;
   }
 
+  /* ── Inputs ───────────────────────────────────────────────────────────
+     6px radius (the brand's --geist-radius), 40px form height, hairline
+     border, blue focus ring. */
   .input {
-    @apply w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none;
-    @apply dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500;
+    @apply w-full rounded-md border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none;
+    @apply dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500;
   }
 
   .label {
     @apply mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300;
+  }
+
+  /* ── Eyebrow ──────────────────────────────────────────────────────────
+     Monospace, technical voice — section eyebrows and small labels.
+     "Mono is the voice of the platform." */
+  .eyebrow {
+    @apply font-mono text-xs font-normal tracking-wide text-neutral-500 uppercase dark:text-neutral-400;
+  }
+
+  /* ── Mesh gradient ────────────────────────────────────────────────────
+     The brand's only decorative chrome: a multi-stop mesh of the three
+     gradient pairs (develop blue→teal, preview violet→pink, ship coral→amber).
+     Used at hero scale as an atmospheric backdrop — never miniaturised. */
+  .mesh-gradient {
+    background-image:
+      radial-gradient(at 18% 0%, color-mix(in srgb, #007cf0 40%, transparent) 0px, transparent 50%),
+      radial-gradient(at 82% 0%, color-mix(in srgb, #7928ca 32%, transparent) 0px, transparent 50%),
+      radial-gradient(at 88% 55%, color-mix(in srgb, #ff0080 28%, transparent) 0px, transparent 50%),
+      radial-gradient(at 8% 60%, color-mix(in srgb, #00dfd8 32%, transparent) 0px, transparent 50%),
+      radial-gradient(at 75% 100%, color-mix(in srgb, #ff4d4d 26%, transparent) 0px, transparent 50%),
+      radial-gradient(at 25% 100%, color-mix(in srgb, #f9cb28 28%, transparent) 0px, transparent 50%);
+  }
+  .dark .mesh-gradient {
+    opacity: 0.55;
   }
 }

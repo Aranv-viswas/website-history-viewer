@@ -91,7 +91,7 @@ const breadcrumb = hasValidQuery
   <div class="container-page py-10">
     <header class="mb-8 text-center">
       <h1
-        class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+        class="text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
       >
         {hasValidQuery ? `${name}: ${labelA} vs ${labelB}` : 'Compare a website across time'}
       </h1>
@@ -116,7 +116,7 @@ const breadcrumb = hasValidQuery
           </div>
 
           <div class="mt-12">
-            <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-neutral-100">
+            <h2 class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
               Compare different dates
             </h2>
             <SearchForm domain={domain} dateA={a} dateB={b} compare compact />
@@ -129,14 +129,14 @@ const breadcrumb = hasValidQuery
           </div>
 
           <section class="mt-14">
-            <h2 class="mb-6 text-center text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+            <h2 class="mb-6 text-center text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
               Popular comparisons
             </h2>
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {POPULAR_COMPARISONS.map((c) => (
                 <a
                   href={`/compare?domain=${encodeURIComponent(c.domain)}&a=${c.yearA}-01-01&b=${todayISO()}`}
-                  class="card flex items-center justify-between gap-3 p-5 transition hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-md"
+                  class="card flex items-center justify-between gap-3 p-5 transition hover:border-neutral-300 hover:shadow-card-hover dark:hover:border-neutral-700"
                 >
                   <div>
                     <h3 class="font-semibold text-neutral-900 dark:text-neutral-100">

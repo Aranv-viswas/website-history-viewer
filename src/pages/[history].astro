@@ -77,11 +77,21 @@ const jsonLd = [
 >
   {/* Hero */}
   <section
-    class="border-b border-neutral-200 bg-gradient-to-b from-brand-50 to-white dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-950"
+    class="relative overflow-hidden border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
   >
-    <div class="container-page py-14">
+    <div
+      class="mesh-gradient pointer-events-none absolute inset-x-0 top-0 -z-0 h-[70%] opacity-60"
+      aria-hidden="true"
+    >
+    </div>
+    <div
+      class="pointer-events-none absolute inset-x-0 bottom-0 -z-0 h-1/2 bg-gradient-to-b from-transparent to-white dark:to-neutral-950"
+      aria-hidden="true"
+    >
+    </div>
+    <div class="relative container-page py-14">
       <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
-        <a href="/" class="hover:text-brand-600 dark:hover:text-brand-400">Home</a>
+        <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100">Home</a>
         <span class="mx-2">/</span>
         <span class="text-neutral-700 dark:text-neutral-300">{name} history</span>
       </nav>
@@ -89,7 +99,7 @@ const jsonLd = [
         <span class="text-5xl" aria-hidden="true">{data.emoji}</span>
         <div>
           <h1
-            class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+            class="text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
           >
             {data.title}
           </h1>
@@ -132,13 +142,13 @@ const jsonLd = [
         {
           data.milestones.length > 0 && (
             <div class="card p-6">
-              <h2 class="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+              <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                 Key milestones
               </h2>
               <ol class="mt-4 space-y-4">
                 {data.milestones.map((m) => (
                   <li class="flex gap-3">
-                    <span class="font-mono text-sm font-bold text-brand-600 dark:text-brand-400">
+                    <span class="font-mono text-sm font-medium text-brand-600 dark:text-brand-400">
                       {m.year}
                     </span>
                     <div>
@@ -161,7 +171,7 @@ const jsonLd = [
 
   {/* Timeline */}
   <section class="container-page py-8">
-    <h2 class="mb-8 text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+    <h2 class="mb-8 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
       {name} design timeline
     </h2>
     <Timeline domain={domain} entries={entries} />
@@ -172,7 +182,7 @@ const jsonLd = [
     data.faqs.length > 0 && (
       <section class="border-t border-neutral-200 bg-neutral-50 py-12 dark:border-neutral-800 dark:bg-neutral-900/40">
         <div class="container-page max-w-3xl">
-          <h2 class="mb-6 text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+          <h2 class="mb-6 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
             Frequently asked questions
           </h2>
           <div class="space-y-3">

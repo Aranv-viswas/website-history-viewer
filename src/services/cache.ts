@@ -18,6 +18,18 @@ const store = new Map<string, Entry<unknown>>();
 /** Default time-to-live: 6 hours. */
 export const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
 
+/**
+ * TTL can be a fixed number of milliseconds, or a function of the produced
+ * value. The latter lets callers cache successes for a long time while keeping
+ * failures (e.g. "snapshot not available") only briefly, so transient outages
+ * recover quickly without hammering the upstream API on every request.
+ */
+export type Ttl<T> = number | ((value: T) => number);
+
+function resolveTtl<T>(ttl: Ttl<T>, value: T): number {
+  return typeof ttl === 'function' ? ttl(value) : ttl;
+}
+
 /** Read a cached value, or undefined if missing/expired. */
 export function cacheGet<T>(key: string): T | undefined {
   const entry = store.get(key) as Entry<T> | undefined;
@@ -42,13 +54,13 @@ export function cacheSet<T>(key: string, value: T, ttlMs = DEFAULT_TTL_MS): void
 export async function cached<T>(
   key: string,
   produce: () => Promise<T>,
-  ttlMs = DEFAULT_TTL_MS
+  ttlMs: Ttl<T> = DEFAULT_TTL_MS
 ): Promise<T> {
   const hit = cacheGet<T>(key);
   if (hit !== undefined) return hit;
 
   const value = await produce();
-  cacheSet(key, value, ttlMs);
+  cacheSet(key, value, resolveTtl(ttlMs, value));
   return value;
 }
 

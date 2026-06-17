@@ -54,26 +54,62 @@ export function slugToDomain(slug: string): string {
   return normalizeDomain(decodeURIComponent(slug));
 }
 
+/** Exact display names for well-known sites (correct casing). */
+const KNOWN_NAMES: Record<string, string> = {
+  'google.com': 'Google',
+  'youtube.com': 'YouTube',
+  'facebook.com': 'Facebook',
+  'amazon.com': 'Amazon',
+  'reddit.com': 'Reddit',
+  'apple.com': 'Apple',
+  'wikipedia.org': 'Wikipedia',
+  'twitter.com': 'Twitter',
+  'microsoft.com': 'Microsoft',
+  'netflix.com': 'Netflix',
+};
+
 /**
- * Human-friendly display name: "youtube.com" -> "YouTube", "bbc.co.uk" -> "Bbc".
- * Falls back to capitalizing the first label.
+ * Common multi-label public suffixes. Not exhaustive (the real Public Suffix
+ * List has thousands), but it covers the country-code combos people actually
+ * type, so we pick the registrable label instead of the suffix. Without this,
+ * "bbc.co.uk" would display as "Co".
+ */
+const MULTI_PART_SUFFIXES = new Set([
+  'co.uk',
+  'org.uk',
+  'gov.uk',
+  'ac.uk',
+  'co.jp',
+  'co.in',
+  'co.nz',
+  'co.za',
+  'com.au',
+  'com.br',
+  'com.cn',
+  'com.mx',
+  'com.tr',
+]);
+
+/**
+ * Human-friendly display name: "youtube.com" -> "YouTube",
+ * "bbc.co.uk" -> "Bbc", "news.ycombinator.com" -> "Ycombinator".
+ *
+ * Picks the registrable label (the one just before the public suffix) so
+ * subdomains and multi-part country-code TLDs don't produce nonsense names.
  */
 export function domainDisplayName(domain: string): string {
-  const known: Record<string, string> = {
-    'google.com': 'Google',
-    'youtube.com': 'YouTube',
-    'facebook.com': 'Facebook',
-    'amazon.com': 'Amazon',
-    'reddit.com': 'Reddit',
-    'apple.com': 'Apple',
-    'wikipedia.org': 'Wikipedia',
-    'twitter.com': 'Twitter',
-    'microsoft.com': 'Microsoft',
-    'netflix.com': 'Netflix',
-  };
   const normalized = normalizeDomain(domain);
-  if (known[normalized]) return known[normalized];
+  if (KNOWN_NAMES[normalized]) return KNOWN_NAMES[normalized];
 
-  const firstLabel = normalized.split('.')[0] ?? normalized;
-  return firstLabel.charAt(0).toUpperCase() + firstLabel.slice(1);
+  const labels = normalized.split('.').filter(Boolean);
+  if (labels.length === 0) return normalized;
+
+  // Strip a known two-label suffix (co.uk, com.au, …); otherwise drop the
+  // single TLD label. Whatever's left, the last label is the brand name.
+  const lastTwo = labels.slice(-2).join('.');
+  const stripCount = MULTI_PART_SUFFIXES.has(lastTwo) ? 2 : 1;
+  const registrable = labels.slice(0, Math.max(1, labels.length - stripCount));
+  const brand = registrable[registrable.length - 1] ?? labels[0];
+
+  return brand.charAt(0).toUpperCase() + brand.slice(1);
 }

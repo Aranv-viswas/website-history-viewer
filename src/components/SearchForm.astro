@@ -10,6 +10,9 @@
  */
 import { todayISO, currentYear } from '@utils/date';
 import { ARCHIVE_START_YEAR } from '@lib/constants';
+import { getLang, useTranslations } from '@i18n/utils';
+
+const t = useTranslations(getLang(Astro));
 
 interface Props {
   domain?: string;
@@ -52,7 +55,7 @@ const maxDate = todayISO();
 
   <div class="grid gap-4 sm:grid-cols-2">
     <div class="sm:col-span-2">
-      <label class="label" for="domain">Website or domain</label>
+      <label class="label" for="domain">{t('search.domainLabel')}</label>
       <input
         id="domain"
         name="domain"
@@ -62,13 +65,13 @@ const maxDate = todayISO();
         spellcheck="false"
         required
         value={domain}
-        placeholder="e.g. youtube.com"
+        placeholder={t('search.domainPlaceholder')}
         class="input text-base"
       />
     </div>
 
     <div>
-      <label class="label" for="date">Date</label>
+      <label class="label" for="date">{t('search.dateLabel')}</label>
       <input
         id="date"
         name="date"
@@ -84,20 +87,20 @@ const maxDate = todayISO();
     <div class="flex items-end">
       <label
         for="compare"
-        class="inline-flex w-full cursor-pointer select-none items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2.5 text-sm font-medium text-neutral-700 transition peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 dark:border-neutral-700 dark:text-neutral-300 dark:peer-checked:border-brand-500 dark:peer-checked:bg-brand-950 dark:peer-checked:text-brand-300"
+        class="inline-flex w-full cursor-pointer select-none items-center gap-2 rounded-md border border-neutral-200 px-3 py-2.5 text-sm font-medium text-neutral-700 transition peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 dark:border-neutral-800 dark:text-neutral-300 dark:peer-checked:border-brand-500 dark:peer-checked:bg-brand-950 dark:peer-checked:text-brand-300"
       >
         <span
           class="flex h-5 w-5 items-center justify-center rounded border border-current text-xs"
           aria-hidden="true">⇄</span
         >
-        Compare two dates
+        {t('search.compareToggle')}
       </label>
     </div>
   </div>
 
   {/* Revealed only when the checkbox above is checked — no JS required. */}
   <div class="mt-4 hidden peer-checked:block">
-    <label class="label" for="dateB">Second date (to compare against)</label>
+    <label class="label" for="dateB">{t('search.secondDateLabel')}</label>
     <input
       id="dateB"
       name="dateB"
@@ -109,8 +112,11 @@ const maxDate = todayISO();
     />
   </div>
 
-  <button type="submit" class="btn-primary mt-5 w-full text-base sm:w-auto">
-    View Snapshot
+  <button
+    type="submit"
+    class="btn-primary mt-5 w-full px-6 py-3 text-base sm:w-auto"
+  >
+    {t('search.submit')}
     <span aria-hidden="true">→</span>
   </button>
 </form>

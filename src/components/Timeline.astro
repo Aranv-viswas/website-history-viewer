@@ -25,11 +25,11 @@ const slug = domainToSlug(domain);
     entries.map((entry, i) => (
       <li class="relative mb-12 pl-6 sm:pl-10">
         {/* Year marker */}
-        <span class="absolute -left-[11px] flex h-5 w-5 items-center justify-center rounded-full border-2 border-brand-500 bg-white dark:bg-neutral-950">
-          <span class="h-2 w-2 rounded-full bg-brand-500" />
+        <span class="absolute -left-[11px] flex h-5 w-5 items-center justify-center rounded-full border-2 border-neutral-900 bg-white dark:border-neutral-100 dark:bg-neutral-950">
+          <span class="h-2 w-2 rounded-full bg-neutral-900 dark:bg-neutral-100" />
         </span>
         <div class="mb-3 flex items-baseline gap-3">
-          <h3 class="text-2xl font-extrabold text-neutral-900 dark:text-neutral-100">
+          <h3 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
             {entry.year}
           </h3>
           {entry.snapshot.available && (
@@ -66,7 +66,7 @@ const slug = domainToSlug(domain);
             />
           </a>
         ) : (
-          <p class="max-w-2xl rounded-lg border border-dashed border-neutral-300 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-700">
+          <p class="max-w-2xl rounded-lg border border-dashed border-neutral-200 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-800">
             No archived capture found for {name} in {entry.year}.
           </p>
         )}

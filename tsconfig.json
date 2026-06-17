@@ -13,6 +13,7 @@
       "@services/*": ["src/services/*"],
       "@utils/*": ["src/utils/*"],
       "@lib/*": ["src/lib/*"],
+      "@i18n/*": ["src/i18n/*"],
       "@styles/*": ["src/styles/*"]
     }
   }

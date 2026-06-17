@@ -1,0 +1,40 @@
+---
+/**
+ * GET /terms — Terms & Conditions. Static, prerendered.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { LEGAL_LAST_UPDATED } from '@lib/constants';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { getLang, localizePath } from '@i18n/utils';
+import { getContent, fillTokens } from '@i18n/content';
+
+const lang = getLang(Astro);
+const c = getContent(lang).terms;
+
+const jsonLd = breadcrumbJsonLd([
+  { name: 'Home', path: localizePath('/', lang) },
+  { name: c.heading, path: localizePath('/terms', lang) },
+]);
+---
+
+<BaseLayout title={c.metaTitle} description={c.metaDescription} jsonLd={jsonLd}>
+  <article class="container-page py-12">
+    <header class="mb-8 max-w-2xl">
+      <p class="eyebrow">{c.eyebrow}</p>
+      <h1
+        class="mt-2 text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        {c.heading}
+      </h1>
+      <p class="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
+        {c.lastUpdatedLabel} {LEGAL_LAST_UPDATED}
+      </p>
+    </header>
+
+    <div
+      class="prose prose-neutral max-w-2xl dark:prose-invert"
+      set:html={fillTokens(c.bodyHtml)}
+    >
+    </div>
+  </article>
+</BaseLayout>

@@ -5,26 +5,28 @@
  */
 import { getCollection } from 'astro:content';
 import BaseLayout from '@layouts/BaseLayout.astro';
+import { getLang, localizeHref } from '@i18n/utils';
+import { getContent } from '@i18n/content';
 
 const histories = (await getCollection('histories')).sort(
   (a, b) => b.data.weight - a.data.weight
 );
+
+const lang = getLang(Astro);
+const content = getContent(lang);
+const c = content.histories;
 ---
 
-<BaseLayout
-  title="Website Histories: Design Evolutions of Iconic Sites"
-  description="Explore the design evolution of the web’s most iconic websites — Google, YouTube, Facebook, Amazon, Reddit and more — with archived screenshots and timelines."
->
+<BaseLayout title={c.metaTitle} description={c.metaDescription}>
   <div class="container-page py-12">
     <header class="mb-10 text-center">
       <h1
-        class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+        class="text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
       >
-        Website histories
+        {c.heading}
       </h1>
       <p class="mx-auto mt-3 max-w-2xl text-neutral-600 dark:text-neutral-400">
-        Deep-dive visual histories of the web’s most iconic sites — how their
-        design, features, and UX evolved over the decades.
+        {c.sub}
       </p>
     </header>
 
@@ -32,20 +34,20 @@ const histories = (await getCollection('histories')).sort(
       {
         histories.map((h) => (
           <a
-            href={`/${h.id}-history`}
-            class="card group flex flex-col p-6 transition hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-md"
+            href={localizeHref(`/${h.id}-history`, lang)}
+            class="card group flex flex-col p-6 transition hover:border-neutral-300 hover:shadow-card-hover dark:hover:border-neutral-700"
           >
             <span class="text-3xl" aria-hidden="true">
               {h.data.emoji}
             </span>
-            <h2 class="mt-3 text-lg font-bold text-neutral-900 dark:text-neutral-100">
+            <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
               {h.data.name} history
             </h2>
             <p class="mt-1 line-clamp-3 text-sm text-neutral-600 dark:text-neutral-400">
               {h.data.description}
             </p>
             <span class="mt-4 text-sm font-medium text-brand-600 group-hover:underline dark:text-brand-400">
-              Explore the evolution →
+              {content.home.exploreEvolution}
             </span>
           </a>
         ))

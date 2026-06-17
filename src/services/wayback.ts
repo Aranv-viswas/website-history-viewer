@@ -23,6 +23,18 @@ import {
 const AVAILABILITY_ENDPOINT = 'https://archive.org/wayback/available';
 const REQUEST_TIMEOUT_MS = 8000;
 
+/**
+ * Snapshot data is immutable, so successes cache for a long time. Failures
+ * (not-found, timeouts, rate limits) are cached only briefly: long enough to
+ * shield the upstream API from repeated identical requests — see `getSnapshots`
+ * fan-out below — but short enough that transient problems clear quickly.
+ */
+const SUCCESS_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const FAILURE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/** Max simultaneous upstream requests when resolving many dates at once. */
+const MAX_CONCURRENCY = 5;
+
 /** A descriptive User-Agent is courteous and recommended by archive.org. */
 const USER_AGENT =
   'WebsiteHistoryViewer/1.0 (+https://websitehistoryviewer.com)';
@@ -122,7 +134,7 @@ export async function getSnapshot(
           : 'We could not reach the Internet Archive. Please try again shortly.'
       );
     }
-  });
+  }, (snap) => (snap.available ? SUCCESS_TTL_MS : FAILURE_TTL_MS));
 }
 
 /** Convenience: the most recent ("today") snapshot for a domain. */
@@ -132,11 +144,30 @@ export function getLatestSnapshot(domain: string): Promise<Snapshot> {
 
 /**
  * Resolve snapshots for many dates at once (used by timelines).
- * Runs in parallel but is naturally throttled by the cache on repeat loads.
+ *
+ * Bounded to `MAX_CONCURRENCY` in-flight requests so an uncached domain (a
+ * timeline can span ~25 years) doesn't fire dozens of simultaneous calls at the
+ * Internet Archive and trip its rate limiter. Cached dates resolve instantly
+ * and don't occupy a slot for long. Results preserve input order.
  */
 export async function getSnapshots(
   domain: string,
   dates: string[]
 ): Promise<Snapshot[]> {
-  return Promise.all(dates.map((date) => getSnapshot(domain, date)));
+  const results = new Array<Snapshot>(dates.length);
+  let next = 0;
+
+  async function worker(): Promise<void> {
+    while (next < dates.length) {
+      const i = next++;
+      results[i] = await getSnapshot(domain, dates[i]);
+    }
+  }
+
+  const pool = Array.from(
+    { length: Math.min(MAX_CONCURRENCY, dates.length) },
+    worker
+  );
+  await Promise.all(pool);
+  return results;
 }

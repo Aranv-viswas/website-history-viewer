@@ -10,6 +10,7 @@ import BaseLayout from '@layouts/BaseLayout.astro';
 import Timeline from '@components/Timeline.astro';
 import SearchForm from '@components/SearchForm.astro';
 import { getSnapshots } from '@services/wayback';
+import { toEmbeddableUrl, screenshotApiUrl } from '@services/screenshot';
 import { slugToDomain, isValidDomain, domainDisplayName, domainToSlug } from '@utils/domain';
 import { timelineYears, yearToISO, currentYear } from '@utils/date';
 import { breadcrumbJsonLd } from '@lib/seo';
@@ -39,8 +40,25 @@ const available = entries.filter((e) => e.snapshot.available);
 const firstYear = available[0]?.year ?? years[0];
 const lastYear = available[available.length - 1]?.year ?? currentYear();
 
-const title = `${name} History: A Visual Timeline`;
-const description = `Watch ${name} evolve year by year, from ${firstYear} to ${currentYear()}. Archived screenshots from the Wayback Machine, assembled into one timeline.`;
+// Cache the assembled timeline at the edge. Use a shorter window when nothing
+// resolved, so a domain that gains captures later isn't stuck showing an empty
+// timeline for a full day.
+Astro.response.headers.set(
+  'Cache-Control',
+  available.length
+    ? 'public, s-maxage=86400, stale-while-revalidate=604800'
+    : 'public, s-maxage=300, stale-while-revalidate=600'
+);
+
+const title = `${name} Website History — Visual Timeline & Archive`;
+const description = `Check the ${name} website history year by year, from ${firstYear} to ${currentYear()}. A website history tracker that turns archived Wayback Machine screenshots into one visual timeline so you can see how ${name} evolved.`;
+
+// Social card: render the earliest available capture, if a screenshot service
+// is configured. Falls back to the site default OG image otherwise.
+const ogArchivedUrl = available[0]?.snapshot.archivedUrl;
+const ogImage = ogArchivedUrl
+  ? (screenshotApiUrl(toEmbeddableUrl(ogArchivedUrl)) ?? undefined)
+  : undefined;
 
 const breadcrumb = breadcrumbJsonLd([
   { name: 'Home', path: '/' },
@@ -48,11 +66,16 @@ const breadcrumb = breadcrumbJsonLd([
 ]);
 ---
 
-<BaseLayout title={title} description={description} jsonLd={breadcrumb}>
+<BaseLayout
+  title={title}
+  description={description}
+  image={ogImage}
+  jsonLd={breadcrumb}
+>
   <div class="container-page py-10">
     <header class="mb-10">
       <h1
-        class="text-3xl font-extrabold tracking-tight text-neutral-900 sm:text-4xl dark:text-neutral-50"
+        class="text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
       >
         {name} through the years
       </h1>
@@ -77,7 +100,7 @@ const breadcrumb = breadcrumbJsonLd([
     <Timeline domain={domain} entries={entries} />
 
     <section class="mt-16 max-w-3xl">
-      <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-neutral-100">
+      <h2 class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
         Build another timeline
       </h2>
       <SearchForm domain={domain} compact />

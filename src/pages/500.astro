@@ -1,19 +1,29 @@
 ---
 /**
- * 404 — friendly not-found page with a search affordance so users can recover.
+ * 500 — friendly server-error page, shown when an on-demand route throws at
+ * runtime (e.g. the Wayback or screenshot service is unreachable). Keeps users
+ * inside the site with a search affordance instead of the default Astro/Vercel
+ * error screen.
+ *
+ * Astro renders this for unhandled errors in `prerender = false` routes and
+ * passes the thrown `error` as a prop (surfaced in the server logs in dev).
  */
 import BaseLayout from '@layouts/BaseLayout.astro';
 import SearchForm from '@components/SearchForm.astro';
 import { getLang, localizePath } from '@i18n/utils';
 import { getContent } from '@i18n/content';
 
+// Available in dev / server logs; never rendered to users.
+const { error } = Astro.props as { error?: unknown };
+if (error) console.error('[500]', error);
+
 const lang = getLang(Astro);
-const c = getContent(lang).notFound;
+const c = getContent(lang).serverError;
 ---
 
 <BaseLayout title={c.metaTitle} description={c.metaDescription} noindex>
   <div class="container-page flex flex-col items-center py-20 text-center">
-    <p class="text-6xl font-semibold text-brand-600 dark:text-brand-400">404</p>
+    <p class="text-6xl font-semibold text-brand-600 dark:text-brand-400">500</p>
     <h1 class="mt-4 text-3xl font-semibold text-neutral-900 dark:text-neutral-100">
       {c.heading}
     </h1>
