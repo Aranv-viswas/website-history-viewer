@@ -9,6 +9,8 @@
     "start": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
+    "deploy": "astro build && wrangler deploy",
+    "cf-typegen": "wrangler types",
     "astro": "astro",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -30,6 +32,7 @@
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^5.7.0",
     "vite-tsconfig-paths": "^6.1.1",
+    "wrangler": "^4.59.2",
     "vitest": "^2.1.9"
   }
 }
