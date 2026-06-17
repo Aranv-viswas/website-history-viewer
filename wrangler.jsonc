@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "website-history-viewer",
+  "main": "./dist/_worker.js/index.js",
+  "compatibility_date": "2025-06-17",
+  // nodejs_compat lets the Astro server bundle use Node built-ins / `process.env`.
+  "compatibility_flags": ["nodejs_compat"],
+  // Serve the prerendered/static output from dist; the Worker handles the rest.
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
