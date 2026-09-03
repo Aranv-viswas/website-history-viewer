@@ -347,7 +347,7 @@ const en: PageContent = {
       <h2>Get in touch</h2>
       <p>
         Questions, feedback, or a feature request? We’d love to hear from you on
-        our <a href="/contact">Contact page</a>.
+        our <a href="/contact/">Contact page</a>.
       </p>`,
   },
   contact: {
@@ -509,7 +509,7 @@ const en: PageContent = {
       <p>
         Questions about this policy? Email us at
         <a href="mailto:{{email}}">{{email}}</a> or visit our
-        <a href="/contact">Contact page</a>.
+        <a href="/contact/">Contact page</a>.
       </p>`,
   },
   terms: {
@@ -589,7 +589,7 @@ const en: PageContent = {
       <p>
         Questions about these Terms? Email us at
         <a href="mailto:{{email}}">{{email}}</a> or visit our
-        <a href="/contact">Contact page</a>.
+        <a href="/contact/">Contact page</a>.
       </p>`,
   },
 };

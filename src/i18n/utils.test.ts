@@ -6,6 +6,7 @@ import {
   localizePath,
   localizeHref,
   isLocalizable,
+  routePath,
   useTranslations,
   getAlternateLinks,
   LOCALES,
@@ -59,18 +60,57 @@ describe('stripLocale', () => {
 
 describe('localizePath', () => {
   it('leaves the default locale un-prefixed', () => {
-    expect(localizePath('/about', 'en')).toBe('/about');
+    expect(localizePath('/about', 'en')).toBe('/about/');
     expect(localizePath('/', 'en')).toBe('/');
   });
 
   it('prefixes non-default locales', () => {
-    expect(localizePath('/about', 'es')).toBe('/es/about');
-    expect(localizePath('/', 'fr')).toBe('/fr');
+    expect(localizePath('/about', 'es')).toBe('/es/about/');
+    expect(localizePath('/', 'fr')).toBe('/fr/');
   });
 
   it('re-localizes an already-localized path', () => {
-    expect(localizePath('/es/about', 'fr')).toBe('/fr/about');
-    expect(localizePath('/de/about', 'en')).toBe('/about');
+    expect(localizePath('/es/about', 'fr')).toBe('/fr/about/');
+    expect(localizePath('/de/about', 'en')).toBe('/about/');
+  });
+});
+
+describe('routePath', () => {
+  it('adds a trailing slash to prerendered pages', () => {
+    expect(routePath('/about')).toBe('/about/');
+    expect(routePath('/es/google-history')).toBe('/es/google-history/');
+  });
+
+  it('leaves the root alone', () => {
+    expect(routePath('/')).toBe('/');
+  });
+
+  it('is idempotent', () => {
+    expect(routePath(routePath('/about'))).toBe('/about/');
+    expect(routePath('/about//')).toBe('/about/');
+  });
+
+  it('keeps on-demand tool routes slash-less — the Worker serves them bare', () => {
+    expect(routePath('/compare')).toBe('/compare');
+    expect(routePath('/compare/')).toBe('/compare');
+    expect(routePath('/timeline/google.com/')).toBe('/timeline/google.com');
+    expect(routePath('/site/google.com/2005-01-01')).toBe(
+      '/site/google.com/2005-01-01'
+    );
+  });
+
+  it('preserves query strings and fragments', () => {
+    expect(routePath('/#examples')).toBe('/#examples');
+    expect(routePath('/es#facts')).toBe('/es/#facts');
+    expect(routePath('/compare?domain=a.com&a=1999-01-01')).toBe(
+      '/compare?domain=a.com&a=1999-01-01'
+    );
+  });
+
+  it('passes through absolute URLs untouched', () => {
+    expect(routePath('https://example.com/about')).toBe(
+      'https://example.com/about'
+    );
   });
 });
 
@@ -91,7 +131,12 @@ describe('isLocalizable', () => {
 
 describe('localizeHref', () => {
   it('localizes content links', () => {
-    expect(localizeHref('/about', 'es')).toBe('/es/about');
+    expect(localizeHref('/about', 'es')).toBe('/es/about/');
+  });
+
+  it('keeps a fragment attached to the localized home link', () => {
+    expect(localizeHref('/#examples', 'de')).toBe('/de/#examples');
+    expect(localizeHref('/#examples', 'en')).toBe('/#examples');
   });
 
   it('keeps tool routes at their canonical English URL in every locale', () => {
@@ -125,15 +170,15 @@ describe('getAlternateLinks', () => {
     const links = getAlternateLinks('/about', 'https://example.com');
     const byLang = Object.fromEntries(links.map((l) => [l.hreflang, l.href]));
 
-    expect(byLang.en).toBe('https://example.com/about');
-    expect(byLang.es).toBe('https://example.com/es/about');
-    expect(byLang['x-default']).toBe('https://example.com/about');
+    expect(byLang.en).toBe('https://example.com/about/');
+    expect(byLang.es).toBe('https://example.com/es/about/');
+    expect(byLang['x-default']).toBe('https://example.com/about/');
     expect(links).toHaveLength(6); // 5 locales + x-default
   });
 
   it('normalizes an already-localized input path', () => {
     const links = getAlternateLinks('/fr/about', 'https://example.com');
     const fr = links.find((l) => l.hreflang === 'fr');
-    expect(fr?.href).toBe('https://example.com/fr/about');
+    expect(fr?.href).toBe('https://example.com/fr/about/');
   });
 });

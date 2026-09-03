@@ -16,6 +16,7 @@ import { domainToSlug } from '@utils/domain';
 import { timelineYears, yearToISO, currentYear } from '@utils/date';
 import { toWaybackTimestamp } from '@utils/date';
 import { articleJsonLd, breadcrumbJsonLd, faqJsonLd } from '@lib/seo';
+import { getLang, localizePath } from '@i18n/utils';
 import type { Snapshot, TimelineEntry } from '@lib/types';
 
 export const getStaticPaths = (async () => {
@@ -33,7 +34,11 @@ const { Content } = await render(entry);
 const domain = data.domain;
 const name = data.name;
 const slug = domainToSlug(domain);
-const path = `/${entry.id}-history`;
+// Structured-data URLs must match the canonical (locale-prefixed, trailing
+// slash) form, or they point Google at a redirect instead of this page.
+const lang = getLang(Astro);
+const path = localizePath(`/${entry.id}-history`, lang);
+const homePath = localizePath('/', lang);
 
 // Optimistic timeline entries — no build-time API calls.
 const years = timelineYears(data.timelineFrom, data.timelineStep);
@@ -62,7 +67,7 @@ const jsonLd = [
     dateModified: data.updatedDate?.toISOString(),
   }),
   breadcrumbJsonLd([
-    { name: 'Home', path: '/' },
+    { name: 'Home', path: homePath },
     { name: `${name} history`, path },
   ]),
   ...(data.faqs.length ? [faqJsonLd(data.faqs)] : []),
@@ -91,9 +96,14 @@ const jsonLd = [
     </div>
     <div class="relative container-page py-14">
       <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
-        <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100">Home</a>
+        <a
+          href={homePath}
+          class="hover:text-neutral-900 dark:hover:text-neutral-100">Home</a
+        >
         <span class="mx-2">/</span>
-        <span class="text-neutral-700 dark:text-neutral-300">{name} history</span>
+        <span class="text-neutral-700 dark:text-neutral-300"
+          >{name} history</span
+        >
       </nav>
       <div class="flex items-center gap-4">
         <span class="text-5xl" aria-hidden="true">{data.emoji}</span>
@@ -171,7 +181,9 @@ const jsonLd = [
 
   {/* Timeline */}
   <section class="container-page py-8">
-    <h2 class="mb-8 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+    <h2
+      class="mb-8 text-2xl font-semibold text-neutral-900 dark:text-neutral-100"
+    >
       {name} design timeline
     </h2>
     <Timeline domain={domain} entries={entries} />

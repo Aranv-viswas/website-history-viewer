@@ -57,12 +57,18 @@ export function stripLocale(pathname: string): string {
  * Rewrite a pathname so it points at the given locale's version of the page.
  * Default locale -> no prefix; every other locale -> `/<lang>` prefix. Existing
  * locale prefixes are normalized away first, so it's safe to re-localize an
- * already-localized path (used by the language switcher).
+ * already-localized path (used by the language switcher). The result goes
+ * through {@link routePath}, so it always names the URL the server serves.
  */
 export function localizePath(pathname: string, lang: Lang): string {
   const base = stripLocale(pathname) || '/';
-  if (lang === DEFAULT_LANG) return base;
-  return base === '/' ? `/${lang}` : `/${lang}${base}`;
+  const localized =
+    lang === DEFAULT_LANG
+      ? base
+      : base === '/'
+        ? `/${lang}`
+        : `/${lang}${base}`;
+  return routePath(localized);
 }
 
 /**
@@ -89,6 +95,32 @@ export function isLocalizable(path: string): boolean {
 }
 
 /**
+ * Normalize an internal path to the exact URL that answers with a 200.
+ *
+ * Prerendered pages are emitted as `<path>/index.html`, and Cloudflare's asset
+ * handler 307-redirects the slash-less form onto the trailing-slash one, so
+ * those paths must carry a trailing slash. On-demand routes (see
+ * {@link NON_LOCALIZED_PREFIXES}) are matched by the Worker and answer at the
+ * bare, slash-less path.
+ *
+ * Every canonical tag, hreflang alternate, sitemap `<loc>` and internal link
+ * goes through here. Emitting the other form is what makes Search Console file
+ * pages under "Page with redirect" / "Alternate page with proper canonical tag"
+ * instead of indexing them. Query strings and fragments are preserved as-is.
+ */
+export function routePath(path: string): string {
+  // Split off ?query / #hash so they survive the rewrite untouched.
+  const cut = path.search(/[?#]/);
+  const pathname = cut === -1 ? path : path.slice(0, cut);
+  const suffix = cut === -1 ? '' : path.slice(cut);
+  if (!pathname.startsWith('/')) return path;
+  let bare = pathname;
+  while (bare.endsWith('/')) bare = bare.slice(0, -1);
+  if (!isLocalizable(pathname)) return `${bare || '/'}${suffix}`;
+  return `${bare}/${suffix}`;
+}
+
+/**
  * Localize an internal link href. Content pages get a locale prefix; on-demand
  * tool routes (see {@link NON_LOCALIZED_PREFIXES}) keep their canonical English
  * URL so they never resolve to a non-existent localized route. Use this for any
@@ -96,7 +128,7 @@ export function isLocalizable(path: string): boolean {
  * localizable content page.
  */
 export function localizeHref(path: string, lang: Lang): string {
-  if (!isLocalizable(path)) return stripLocale(path) || '/';
+  if (!isLocalizable(path)) return routePath(stripLocale(path) || '/');
   return localizePath(path, lang);
 }
 
@@ -122,8 +154,7 @@ export function getAlternateLinks(
   siteUrl: string
 ): Array<{ hreflang: string; href: string }> {
   const base = stripLocale(pathname);
-  const abs = (lang: Lang) =>
-    new URL(localizePath(base, lang), siteUrl).href;
+  const abs = (lang: Lang) => new URL(localizePath(base, lang), siteUrl).href;
 
   const links: Array<{ hreflang: string; href: string }> = LOCALES.map(
     (lang) => ({ hreflang: lang, href: abs(lang) })

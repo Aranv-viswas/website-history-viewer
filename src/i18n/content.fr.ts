@@ -250,7 +250,7 @@ export const fr: PageContent = {
       <h2>Nous contacter</h2>
       <p>
         Des questions, des commentaires ou une demande de fonctionnalité ? Nous serions ravis d'avoir de vos nouvelles sur
-        notre <a href="/contact">page de contact</a>.
+        notre <a href="/contact/">page de contact</a>.
       </p>`,
   },
   contact: {
@@ -412,7 +412,7 @@ export const fr: PageContent = {
       <p>
         Des questions sur cette politique ? Écrivez-nous à
         <a href="mailto:{{email}}">{{email}}</a> ou visitez notre
-        <a href="/contact">page de contact</a>.
+        <a href="/contact/">page de contact</a>.
       </p>`,
   },
   terms: {
@@ -492,7 +492,7 @@ export const fr: PageContent = {
       <p>
         Des questions sur ces Conditions ? Écrivez-nous à
         <a href="mailto:{{email}}">{{email}}</a> ou visitez notre
-        <a href="/contact">page de contact</a>.
+        <a href="/contact/">page de contact</a>.
       </p>`,
   },
 };

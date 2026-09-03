@@ -31,6 +31,11 @@ export const SITE = {
     'view website history',
   ],
   defaultOgImage: '/og/default.png',
+  /**
+   * AdSense publisher ID. Consumed by the Auto ads tag in BaseLayout and by
+   * the generated /ads.txt — keep it here so the two can never disagree.
+   */
+  adsenseClient: 'ca-pub-9460483599694959',
   twitter: '@webhistoryview',
   locale: 'en_US',
   themeColor: '#ffffff',

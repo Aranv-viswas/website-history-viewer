@@ -260,7 +260,7 @@ export const es: PageContent = {
       <h2>Ponte en contacto</h2>
       <p>
         ¿Preguntas, comentarios o una sugerencia de función? Nos encantaría saber
-        de ti en nuestra <a href="/contact">página de Contacto</a>.
+        de ti en nuestra <a href="/contact/">página de Contacto</a>.
       </p>`,
   },
   contact: {
@@ -427,7 +427,7 @@ export const es: PageContent = {
       <p>
         ¿Preguntas sobre esta política? Escríbenos a
         <a href="mailto:{{email}}">{{email}}</a> o visita nuestra
-        <a href="/contact">página de Contacto</a>.
+        <a href="/contact/">página de Contacto</a>.
       </p>`,
   },
   terms: {
@@ -509,7 +509,7 @@ export const es: PageContent = {
       <p>
         ¿Preguntas sobre estos Términos? Escríbenos a
         <a href="mailto:{{email}}">{{email}}</a> o visita nuestra
-        <a href="/contact">página de Contacto</a>.
+        <a href="/contact/">página de Contacto</a>.
       </p>`,
   },
 };

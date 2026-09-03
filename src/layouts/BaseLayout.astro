@@ -39,7 +39,7 @@ const lang = getLang(Astro);
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="WebsiteHistoryViewer" />
     <link rel="manifest" href="/site.webmanifest" />
-    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
     {/* Preconnect to the services we hit at runtime for faster previews. */}
     <link rel="preconnect" href="https://web.archive.org" />
@@ -51,7 +51,9 @@ const lang = getLang(Astro);
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
     />
 
-    {/* Set the theme before paint to avoid a flash of the wrong color scheme. */}
+    {
+      /* Set the theme before paint to avoid a flash of the wrong color scheme. */
+    }
     <script is:inline>
       (() => {
         try {
@@ -69,6 +71,14 @@ const lang = getLang(Astro);
     </script>
 
     <SEO {...props} />
+
+    {/* Google AdSense Auto ads. Must be in <head> on every page, or Google
+        serves nothing at all. */}
+    <script
+      is:inline
+      async
+      src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${SITE.adsenseClient}`}
+      crossorigin="anonymous"></script>
 
     {/* Google tag (gtag.js) */}
     <script

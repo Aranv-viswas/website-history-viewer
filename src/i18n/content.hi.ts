@@ -245,7 +245,7 @@ export const hi: PageContent = {
       <h2>संपर्क करें</h2>
       <p>
         प्रश्न, प्रतिक्रिया, या कोई फ़ीचर अनुरोध? हम हमारे
-        <a href="/contact">संपर्क पेज</a> पर आपसे सुनना पसंद करेंगे।
+        <a href="/contact/">संपर्क पेज</a> पर आपसे सुनना पसंद करेंगे।
       </p>`,
   },
   contact: {
@@ -404,7 +404,7 @@ export const hi: PageContent = {
       <p>
         इस नीति के बारे में प्रश्न? हमें
         <a href="mailto:{{email}}">{{email}}</a> पर ईमेल करें या हमारे
-        <a href="/contact">संपर्क पेज</a> पर जाएँ।
+        <a href="/contact/">संपर्क पेज</a> पर जाएँ।
       </p>`,
   },
   terms: {
@@ -482,7 +482,7 @@ export const hi: PageContent = {
       <p>
         इन नियमों के बारे में प्रश्न? हमें
         <a href="mailto:{{email}}">{{email}}</a> पर ईमेल करें या हमारे
-        <a href="/contact">संपर्क पेज</a> पर जाएँ।
+        <a href="/contact/">संपर्क पेज</a> पर जाएँ।
       </p>`,
   },
 };

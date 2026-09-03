@@ -251,7 +251,7 @@ export const de: PageContent = {
       <h2>Kontakt aufnehmen</h2>
       <p>
         Fragen, Feedback oder ein Funktionswunsch? Wir würden uns freuen, auf unserer
-        <a href="/contact">Kontaktseite</a> von dir zu hören.
+        <a href="/contact/">Kontaktseite</a> von dir zu hören.
       </p>`,
   },
   contact: {
@@ -415,7 +415,7 @@ export const de: PageContent = {
       <p>
         Fragen zu dieser Richtlinie? Schreib uns an
         <a href="mailto:{{email}}">{{email}}</a> oder besuche unsere
-        <a href="/contact">Kontaktseite</a>.
+        <a href="/contact/">Kontaktseite</a>.
       </p>`,
   },
   terms: {
@@ -498,7 +498,7 @@ export const de: PageContent = {
       <p>
         Fragen zu diesen Bedingungen? Schreib uns an
         <a href="mailto:{{email}}">{{email}}</a> oder besuche unsere
-        <a href="/contact">Kontaktseite</a>.
+        <a href="/contact/">Kontaktseite</a>.
       </p>`,
   },
 };

@@ -12,7 +12,13 @@ import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { SITE, POPULAR_SITES } from '@lib/constants';
 import { domainToSlug } from '@utils/domain';
-import { LOCALES, DEFAULT_LANG, localizePath, isLocalizable } from '@i18n/utils';
+import {
+  LOCALES,
+  DEFAULT_LANG,
+  localizePath,
+  isLocalizable,
+  routePath,
+} from '@i18n/utils';
 
 export const prerender = true;
 
@@ -23,7 +29,9 @@ export const GET: APIRoute = async ({ site }) => {
   const base = (site?.href ?? SITE.url).replace(/\/$/, '');
   const lastmod = new Date().toISOString().slice(0, 10);
 
-  const loc = (path: string) => `${base}${path}`;
+  // `routePath` pins each entry to the form the server answers with a 200 —
+  // listing the other form makes every sitemap URL a redirect for Googlebot.
+  const loc = (path: string) => `${base}${routePath(path)}`;
 
   /** The `<xhtml:link rel="alternate" hreflang>` block shared by a page's
    *  locale variants — every page lists all its language alternates. */
@@ -71,7 +79,9 @@ export const GET: APIRoute = async ({ site }) => {
       `    <loc>${loc(path)}</loc>`,
       `    <lastmod>${lastmod}</lastmod>`,
       changefreq ? `    <changefreq>${changefreq}</changefreq>` : null,
-      priority != null ? `    <priority>${priority.toFixed(1)}</priority>` : null,
+      priority != null
+        ? `    <priority>${priority.toFixed(1)}</priority>`
+        : null,
       // Only content pages exist per-locale; on-demand tool routes are
       // English-only, so they carry no hreflang alternates.
       isLocalizable(path) ? alternatesXml(path) : null,
