@@ -73,6 +73,12 @@ export function cacheForStatus(status: string): string {
 /**
  * Clamp a numeric query parameter into a supported range.
  * Falls back to `fallback` when the value is missing or unparseable.
+ *
+ * The null check is load-bearing and easy to lose: `Number(null)` is 0, not
+ * NaN, and `Number('')` is 0 too. Testing only `Number.isFinite` therefore
+ * treats *every omitted parameter* as a valid zero and clamps it to `min`,
+ * silently ignoring the fallback — which shipped a redesign threshold of 10
+ * instead of 55 and let every minor change through as a "likely redesign".
  */
 export function clampParam(
   raw: string | null,
@@ -80,6 +86,7 @@ export function clampParam(
   min: number,
   max: number
 ): number {
+  if (raw === null || raw.trim() === '') return fallback;
   const n = Number(raw);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.round(n)));

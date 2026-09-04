@@ -1,0 +1,760 @@
+---
+/**
+ * GET /design/[domain] — a website's design history: palette, logo and the
+ * transitions that look like redesigns.
+ *
+ * ── What this page can and cannot claim ─────────────────────────────────────
+ * Everything here comes from the archived HTML source, not from rendered
+ * screenshots (no rendering service is configured; see @services/screenshot).
+ * That means:
+ *
+ *   - colours are what the markup *declares*, so a palette living entirely in
+ *     an external stylesheet is invisible here;
+ *   - a "logo" is the most logo-like image in the markup, which is a guess;
+ *   - a "likely redesign" is a large markup distance, which correlates with a
+ *     rebuild but does not prove one.
+ *
+ * The page says all of this in the interface rather than only in a comment,
+ * because a confident-looking palette strip invites more trust than the method
+ * has earned. Where the analysis is unreliable it falls back to the snapshot
+ * itself, which is always the honest artefact.
+ *
+ * The analysis costs one archived page fetch per frame, so the page renders its
+ * shell immediately and loads /api/design-evolution behind a progress state.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import HistoryTimeline from '@components/HistoryTimeline.astro';
+import ShareButtons from '@components/ShareButtons.astro';
+import SearchForm from '@components/SearchForm.astro';
+import { getArchiveOverview } from '@services/archive-overview';
+import { DEFAULT_DESIGN_FRAMES } from '@services/design-evolution';
+import {
+  slugToDomain,
+  isValidDomain,
+  domainDisplayName,
+  domainToSlug,
+} from '@utils/domain';
+import { buildFrames, computeStats } from '@lib/history';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { SITE } from '@lib/constants';
+
+export const prerender = false;
+
+const domain = slugToDomain(Astro.params.domain ?? '');
+
+if (!isValidDomain(domain)) {
+  return Astro.redirect('/?error=invalid-domain', 302);
+}
+
+const name = domainDisplayName(domain);
+const slug = domainToSlug(domain);
+
+const overview = await getArchiveOverview(domain);
+const stats = computeStats(overview);
+const hasHistory = overview.status === 'ok' && overview.months.length > 1;
+
+Astro.response.headers.set(
+  'Cache-Control',
+  hasHistory
+    ? 'public, s-maxage=86400, stale-while-revalidate=604800'
+    : 'public, s-maxage=300, stale-while-revalidate=600'
+);
+
+const spanLabel = hasHistory ? `${stats.firstYear}–${stats.lastYear}` : '';
+
+const title = hasHistory
+  ? `${name} Design History — Logo, Colours & Redesigns, ${spanLabel}`
+  : `${name} Design History`;
+
+const description = hasHistory
+  ? `How ${domain} changed its design between ${spanLabel}: logo candidates, colour palettes and the moments its markup was rebuilt, read from archived Wayback Machine captures.`
+  : `We could not analyse a design history for ${domain}. ${overview.message ?? ''}`.trim();
+
+const canonicalPath = `/design/${slug}`;
+const shareUrl = new URL(canonicalPath, SITE.url).href;
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: `${name} history`, path: `/timeline/${slug}` },
+  { name: 'Design history', path: canonicalPath },
+]);
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  noindex={!hasHistory}
+  jsonLd={breadcrumb}
+>
+  <div class="container-page py-10">
+    <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
+      <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >Home</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <a
+        href={`/timeline/${slug}`}
+        class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >{name} timeline</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <span class="text-neutral-700 dark:text-neutral-300">Design history</span>
+    </nav>
+
+    <header class="mb-8 max-w-3xl">
+      <p class="eyebrow">Design history</p>
+      <h1
+        class="mt-2 text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        How {name} changed its design
+      </h1>
+      <p class="mt-3 text-neutral-600 dark:text-neutral-400">
+        {
+          hasHistory
+            ? `Logo candidates, colour palettes and likely rebuilds across ${domain}'s archived history, ${spanLabel}.`
+            : (overview.message ??
+              `There is not enough archived history for ${domain} to analyse.`)
+        }
+      </p>
+
+      {
+        /* The method disclosure sits at the top, not in a footnote: it changes
+          how every number below should be read. */
+      }
+      {
+        hasHistory && (
+          <details class="mt-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+            <summary class="cursor-pointer font-medium text-neutral-800 dark:text-neutral-200">
+              How this is measured — and what it can't tell you
+            </summary>
+            <div class="mt-3 space-y-2 text-neutral-600 dark:text-neutral-400">
+              <p>
+                This analysis reads the <strong>archived HTML source</strong> of
+                each capture. It does not render the pages or compare
+                screenshots.
+              </p>
+              <ul class="list-disc space-y-1 pl-5">
+                <li>
+                  <strong>Colours</strong> are the ones written into the markup
+                  — hex values, <code class="font-mono text-xs">rgb()</code>,
+                  and the old <code class="font-mono text-xs">bgcolor</code>
+                  -style attributes. A palette that lives entirely in an
+                  external stylesheet will not appear.
+                </li>
+                <li>
+                  <strong>Logos</strong> are the most logo-like image in the
+                  markup, scored by filename, alt text and position. It is a
+                  guess, and on sites that name assets unhelpfully it is often
+                  wrong.
+                </li>
+                <li>
+                  <strong>Redesigns</strong> are large jumps in markup structure
+                  between two captures. A site can change its entire appearance
+                  in a stylesheet without touching its HTML, and this method
+                  would not see it.
+                </li>
+              </ul>
+              <p>
+                Where the analysis is unreliable, the snapshot itself is always
+                the honest artefact —{' '}
+                <a
+                  href={`/timeline/${slug}`}
+                  class="font-medium text-brand-600 hover:underline dark:text-brand-400"
+                >
+                  open the timeline
+                </a>{' '}
+                and look.
+              </p>
+            </div>
+          </details>
+        )
+      }
+    </header>
+
+    {
+      hasHistory ? (
+        <section
+          data-design
+          data-domain={domain}
+          data-slug={slug}
+          data-frames={DEFAULT_DESIGN_FRAMES}
+        >
+          {/* Progress / error state, replaced once the analysis lands. */}
+          <div
+            data-design-status
+            role="status"
+            class="rounded-xl border border-neutral-200 bg-white p-10 text-center dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            <div
+              data-status-spinner
+              class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-brand-600 dark:border-neutral-700 dark:border-t-brand-400"
+            />
+            <p
+              data-status-text
+              class="mt-4 font-medium text-neutral-700 dark:text-neutral-300"
+            >
+              Reading {DEFAULT_DESIGN_FRAMES} archived captures of {name}…
+            </p>
+            <p
+              data-status-detail
+              class="mx-auto mt-1 max-w-md text-sm text-neutral-500"
+            >
+              Each one is fetched from the Internet Archive and analysed. This
+              takes several seconds the first time, then it's cached.
+            </p>
+            <button
+              type="button"
+              data-status-retry
+              class="btn-secondary mt-5 hidden"
+            >
+              Try again
+            </button>
+          </div>
+
+          {/* ── Likely redesigns ──────────────────────────────────────── */}
+          <section data-redesigns class="mb-12 hidden">
+            <h2 class="mb-2 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              Likely redesigns
+            </h2>
+            <p class="mb-4 max-w-2xl text-sm text-neutral-600 dark:text-neutral-400">
+              Transitions where the markup changed far more than usual. Each one
+              says the site was rebuilt <em>somewhere between</em> those two
+              captures — not on a specific date.
+            </p>
+            <div data-redesigns-list class="grid gap-3 sm:grid-cols-2" />
+          </section>
+
+          {/* ── Logo evolution ────────────────────────────────────────── */}
+          <section data-logos class="mb-12 hidden">
+            <h2 class="mb-2 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              Logo evolution
+            </h2>
+            <p class="mb-4 max-w-2xl text-sm text-neutral-600 dark:text-neutral-400">
+              The most logo-like image found in each capture's markup, in order.
+              These are candidates, not confirmed logos — if one looks wrong, it
+              probably is.
+            </p>
+            <ol data-logos-list class="flex gap-4 overflow-x-auto pb-3" />
+          </section>
+
+          {/* ── Colour evolution ──────────────────────────────────────── */}
+          <section data-colors class="mb-12 hidden">
+            <h2 class="mb-2 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              Colour evolution
+            </h2>
+            <p class="mb-4 max-w-2xl text-sm text-neutral-600 dark:text-neutral-400">
+              An approximation of each capture's declared palette, most-declared
+              first.
+            </p>
+            <ol data-colors-list class="space-y-2" />
+          </section>
+
+          {/* ── Mobile vs desktop ─────────────────────────────────────── */}
+          <section data-devices class="mb-12 hidden">
+            <h2 class="mb-2 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              Mobile vs desktop
+            </h2>
+            <div data-devices-body />
+          </section>
+
+          {/* ── Era markers ───────────────────────────────────────────── */}
+          <section data-eras class="mb-12 hidden">
+            <h2 class="mb-2 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              Era markers
+            </h2>
+            <p class="mb-4 max-w-2xl text-sm text-neutral-600 dark:text-neutral-400">
+              Plain facts about how each page was built. These date a page far
+              more reliably than its colours do.
+            </p>
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[520px] text-sm">
+                <thead>
+                  <tr class="border-b border-neutral-200 text-left dark:border-neutral-800">
+                    <th class="py-2 pr-4 font-medium text-neutral-500">
+                      Capture
+                    </th>
+                    <th class="py-2 pr-4 font-medium text-neutral-500">
+                      Layout
+                    </th>
+                    <th class="py-2 pr-4 font-medium text-neutral-500">
+                      Flash
+                    </th>
+                    <th class="py-2 pr-4 font-medium text-neutral-500">
+                      Mobile-ready
+                    </th>
+                    <th class="py-2 font-medium text-neutral-500">
+                      Markup change
+                    </th>
+                  </tr>
+                </thead>
+                <tbody data-eras-body />
+              </table>
+            </div>
+          </section>
+        </section>
+      ) : (
+        <div class="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-10 text-center dark:border-neutral-700 dark:bg-neutral-900/40">
+          <span class="text-4xl" aria-hidden="true">
+            🎨
+          </span>
+          <p class="mt-4 font-medium text-neutral-800 dark:text-neutral-200">
+            No design history available for {domain}
+          </p>
+          <p class="mx-auto mt-1 max-w-md text-sm text-neutral-500">
+            {overview.message ??
+              'We need several archived captures spread over time to analyse how a site’s design changed.'}
+          </p>
+          <a href="/collections" class="btn-primary mt-6">
+            Browse sites with rich histories
+          </a>
+        </div>
+      )
+    }
+
+    {
+      hasHistory && (
+        <>
+          <section class="mt-14">
+            <h2 class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              The full archive timeline
+            </h2>
+            <HistoryTimeline
+              overview={overview}
+              frames={buildFrames(overview, 24)}
+            />
+          </section>
+
+          <div class="mt-10 flex flex-wrap items-center justify-between gap-4">
+            <ShareButtons
+              url={shareUrl}
+              text={`How ${name}'s design changed, ${spanLabel}:`}
+            />
+            <div class="flex flex-wrap gap-3">
+              <a href={`/evolution/${slug}`} class="btn-secondary">
+                ▶ Play evolution
+              </a>
+              <a href={`/timeline/${slug}`} class="btn-secondary">
+                📅 Full timeline
+              </a>
+            </div>
+          </div>
+        </>
+      )
+    }
+
+    <section class="mt-14 max-w-3xl">
+      <h2
+        class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+      >
+        Analyse another website
+      </h2>
+      <SearchForm domain={domain} compact />
+    </section>
+  </div>
+</BaseLayout>
+
+<script>
+  /**
+   * Fetches the design analysis and renders the four panels.
+   *
+   * Panels only appear when they have something to show: a site whose palette
+   * lives entirely in a stylesheet gets no colour section rather than an empty
+   * one implying the analysis found nothing worth finding.
+   */
+  interface ColorSample {
+    hex: string;
+    weight: number;
+  }
+
+  interface DesignFrame {
+    year: number;
+    date: string;
+    label: string;
+    ok: boolean;
+    message: string | null;
+    title: string | null;
+    colors: ColorSample[];
+    logo: { url: string; alt: string | null } | null;
+    usesTableLayout: boolean;
+    usesFlash: boolean;
+    isResponsive: boolean;
+    changeScore: number | null;
+    changes: Array<{ kind: string; summary: string; detail: string }>;
+  }
+
+  interface DesignPayload {
+    status: string;
+    message: string | null;
+    analyzedCount: number;
+    frames: DesignFrame[];
+    redesigns: Array<{
+      fromDate: string;
+      fromLabel: string;
+      toDate: string;
+      toLabel: string;
+      score: number;
+      headline: string;
+    }>;
+  }
+
+  function initDesign(root: HTMLElement) {
+    const domain = root.dataset.domain ?? '';
+    const slug = root.dataset.slug ?? domain;
+    const frameCount = root.dataset.frames ?? '8';
+
+    const status = root.querySelector<HTMLElement>('[data-design-status]');
+    const statusText = root.querySelector<HTMLElement>('[data-status-text]');
+    const statusDetail = root.querySelector<HTMLElement>(
+      '[data-status-detail]'
+    );
+    const spinner = root.querySelector<HTMLElement>('[data-status-spinner]');
+    const retry = root.querySelector<HTMLButtonElement>('[data-status-retry]');
+
+    const esc = (s: string) =>
+      s.replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+          })[c] ?? c
+      );
+
+    function fail(text: string, detail: string) {
+      if (!status) return;
+      status.classList.remove('hidden');
+      spinner?.classList.add('hidden');
+      if (statusText) statusText.textContent = text;
+      if (statusDetail) statusDetail.textContent = detail;
+      retry?.classList.remove('hidden');
+    }
+
+    function show(selector: string) {
+      root.querySelector<HTMLElement>(selector)?.classList.remove('hidden');
+    }
+
+    function renderRedesigns(data: DesignPayload) {
+      const list = root.querySelector<HTMLElement>('[data-redesigns-list]');
+      if (!list || data.redesigns.length === 0) return;
+
+      list.innerHTML = data.redesigns
+        .map(
+          (r) => `
+        <a href="/compare/${esc(slug)}/${esc(r.fromDate)}/${esc(r.toDate)}"
+           class="card block p-4 transition hover:border-neutral-300 dark:hover:border-neutral-700">
+          <div class="flex items-baseline justify-between gap-2">
+            <p class="font-mono text-sm text-neutral-900 dark:text-neutral-100">
+              ${esc(r.fromLabel)} → ${esc(r.toLabel)}
+            </p>
+            <span class="rounded-full bg-brand-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+              ${r.score}/100
+            </span>
+          </div>
+          <p class="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400">${esc(r.headline)}</p>
+          <span class="mt-3 inline-block text-xs font-medium text-brand-600 dark:text-brand-400">
+            Compare these two →
+          </span>
+        </a>`
+        )
+        .join('');
+      show('[data-redesigns]');
+    }
+
+    function renderLogos(data: DesignPayload) {
+      const list = root.querySelector<HTMLElement>('[data-logos-list]');
+      const withLogos = data.frames.filter((f) => f.ok && f.logo);
+      // One logo is not an evolution.
+      if (!list || withLogos.length < 2) return;
+
+      list.innerHTML = withLogos
+        .map(
+          (f) => `
+        <li class="shrink-0">
+          <a href="/site/${esc(slug)}/${esc(f.date)}"
+             class="block w-36 rounded-lg border border-neutral-200 bg-white p-3 text-center transition hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900">
+            <div class="flex h-20 items-center justify-center overflow-hidden rounded bg-neutral-50 dark:bg-neutral-800">
+              <img src="${esc(f.logo!.url)}" alt="${esc(f.logo!.alt ?? '')}"
+                   loading="lazy" decoding="async"
+                   class="max-h-full max-w-full object-contain"
+                   onerror="this.closest('a').querySelector('[data-logo-fallback]').classList.remove('hidden');this.remove()">
+              <span data-logo-fallback class="hidden px-2 text-[11px] text-neutral-400">
+                Image no longer in the archive
+              </span>
+            </div>
+            <p class="mt-2 font-mono text-[11px] text-neutral-600 dark:text-neutral-400">${esc(f.label)}</p>
+          </a>
+        </li>`
+        )
+        .join('');
+      show('[data-logos]');
+    }
+
+    function renderColors(data: DesignPayload) {
+      const list = root.querySelector<HTMLElement>('[data-colors-list]');
+      const withColors = data.frames.filter((f) => f.ok && f.colors.length > 0);
+      if (!list || withColors.length < 2) return;
+
+      list.innerHTML = withColors
+        .map(
+          (f) => `
+        <li class="flex items-center gap-4 rounded-lg border border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
+          <a href="/site/${esc(slug)}/${esc(f.date)}"
+             class="w-20 shrink-0 font-mono text-xs font-medium text-neutral-700 hover:underline dark:text-neutral-300">
+            ${esc(f.label)}
+          </a>
+          <div class="flex flex-1 flex-wrap gap-1.5">
+            ${f.colors
+              .map(
+                (c) => `<span title="${esc(c.hex)}"
+                  class="h-7 w-7 rounded border border-black/10 dark:border-white/15"
+                  style="background:${esc(c.hex)}"></span>`
+              )
+              .join('')}
+          </div>
+          <span class="hidden font-mono text-[11px] text-neutral-400 sm:inline">
+            ${esc(f.colors[0].hex)}
+          </span>
+        </li>`
+        )
+        .join('');
+      show('[data-colors]');
+    }
+
+    function renderEras(data: DesignPayload) {
+      const body = root.querySelector<HTMLElement>('[data-eras-body]');
+      const ok = data.frames.filter((f) => f.ok);
+      if (!body || ok.length === 0) return;
+
+      const yes =
+        '<span class="text-neutral-900 dark:text-neutral-100">Yes</span>';
+      const no = '<span class="text-neutral-400">No</span>';
+
+      body.innerHTML = ok
+        .map(
+          (f) => `
+        <tr class="border-b border-neutral-100 dark:border-neutral-800/60">
+          <td class="py-2 pr-4">
+            <a href="/site/${esc(slug)}/${esc(f.date)}"
+               class="font-mono text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">
+              ${esc(f.label)}
+            </a>
+          </td>
+          <td class="py-2 pr-4 text-neutral-600 dark:text-neutral-400">
+            ${f.usesTableLayout ? 'Tables' : 'CSS / semantic'}
+          </td>
+          <td class="py-2 pr-4">${f.usesFlash ? yes : no}</td>
+          <td class="py-2 pr-4">${f.isResponsive ? yes : no}</td>
+          <td class="py-2 font-mono text-xs text-neutral-600 dark:text-neutral-400">
+            ${f.changeScore === null ? '—' : `${f.changeScore}/100`}
+          </td>
+        </tr>`
+        )
+        .join('');
+      show('[data-eras]');
+    }
+
+    /**
+     * Some captures routinely fail to read — the Internet Archive can be slow
+     * or refuse under load, and a few captures simply are not HTML. Filtering
+     * those out silently would leave a page that quietly shows four rows when
+     * it said it would read eight, with no explanation. Say what happened.
+     */
+    function renderPartialNotice(data: DesignPayload) {
+      const total = data.frames.length;
+      const missing = total - data.analyzedCount;
+      if (missing <= 0) return;
+
+      const unread = data.frames.filter((f) => !f.ok).map((f) => f.label);
+      const note = document.createElement('p');
+      note.className =
+        'mb-8 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200';
+      note.textContent =
+        `Read ${data.analyzedCount} of ${total} captures. ` +
+        `${missing === 1 ? 'One capture' : `${missing} captures`} could not be ` +
+        `retrieved from the Internet Archive (${unread.join(', ')}), so ` +
+        'those points are missing below. Reloading later often picks up more.';
+      root.insertBefore(note, root.firstChild);
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(
+          `/api/design-evolution?url=${encodeURIComponent(domain)}&frames=${encodeURIComponent(frameCount)}`
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as DesignPayload;
+
+        if (data.status !== 'ok' || data.analyzedCount === 0) {
+          fail(
+            'Could not analyse this design history',
+            data.message ??
+              'None of the archived captures could be read. The Internet Archive may be busy — try again shortly.'
+          );
+          return;
+        }
+
+        renderRedesigns(data);
+        renderLogos(data);
+        renderColors(data);
+        renderEras(data);
+        renderPartialNotice(data);
+        status?.classList.add('hidden');
+
+        // Every panel needs at least two comparable captures; if none of them
+        // qualified, say so rather than leaving a blank page.
+        const rendered = root.querySelectorAll(
+          '[data-redesigns]:not(.hidden), [data-logos]:not(.hidden), [data-colors]:not(.hidden), [data-eras]:not(.hidden)'
+        );
+        if (rendered.length === 0) {
+          fail(
+            'Not enough readable captures',
+            `We read ${data.analyzedCount} capture(s), which is not enough to show how the design changed. The timeline still works.`
+          );
+        }
+      } catch {
+        fail(
+          'Could not load the design analysis',
+          'The request to the Internet Archive failed. It may be busy — try again in a moment.'
+        );
+      }
+    }
+
+    retry?.addEventListener('click', () => {
+      spinner?.classList.remove('hidden');
+      retry.classList.add('hidden');
+      if (statusText) statusText.textContent = 'Retrying…';
+      void load();
+    });
+
+    void load();
+  }
+
+  /**
+   * Mobile-vs-desktop capture coverage.
+   *
+   * Runs independently of the design analysis above — it's a single fast
+   * lookup, so it shouldn't wait behind eight archived page fetches, and it
+   * should still appear if those fail.
+   *
+   * The wording is deliberately careful in the negative case: "no separate
+   * mobile site was archived" is a fact about the archive, and is very
+   * different from "this site had no mobile version" — most sites went
+   * responsive instead of building one, which is not a mobile *host*.
+   */
+  interface DevicesPayload {
+    domain: string;
+    name: string;
+    mobileHost: string | null;
+    hasMobileCaptures: boolean;
+    mobileFirstYear: number | null;
+    mobileLastYear: number | null;
+    mobileCaptures: number;
+    desktopFirstYear: number | null;
+    desktopLastYear: number | null;
+    desktopCaptures: number;
+    overlappingYears: number[];
+    message: string | null;
+  }
+
+  async function initDevices(root: HTMLElement) {
+    const section = root.querySelector<HTMLElement>('[data-devices]');
+    const body = root.querySelector<HTMLElement>('[data-devices-body]');
+    const domain = root.dataset.domain ?? '';
+    const slug = root.dataset.slug ?? domain;
+    if (!section || !body) return;
+
+    const esc = (s: string) =>
+      s.replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+          })[c] ?? c
+      );
+
+    let data: DevicesPayload;
+    try {
+      const res = await fetch(`/api/devices?url=${encodeURIComponent(domain)}`);
+      if (!res.ok) return;
+      data = (await res.json()) as DevicesPayload;
+    } catch {
+      return; // supplementary panel — stay silent rather than show an error
+    }
+
+    if (!data.hasMobileCaptures || !data.mobileHost) {
+      body.innerHTML = `
+        <div class="rounded-xl border border-dashed border-neutral-300 p-5 text-sm text-neutral-600 dark:border-neutral-700 dark:text-neutral-400">
+          <p><strong class="font-medium text-neutral-900 dark:text-neutral-100">No separate mobile site was archived.</strong></p>
+          <p class="mt-1.5">${esc(data.message ?? '')}</p>
+          <p class="mt-2 text-xs text-neutral-500">
+            That is a fact about the archive, not about the website. A site that
+            went responsive served the same URL to phones and desktops, so there
+            is no second host to capture — look for "Mobile-ready" in the era
+            table above for that story instead.
+          </p>
+        </div>`;
+      section.classList.remove('hidden');
+      return;
+    }
+
+    // Offer the most recent year both hosts were captured, so the two sides of
+    // the comparison are genuinely contemporaneous.
+    const shared = data.overlappingYears;
+    const year = shared.length
+      ? shared[shared.length - 1]
+      : data.mobileLastYear;
+    const date = `${year}-06-15`;
+
+    body.innerHTML = `
+      <p class="mb-4 max-w-2xl text-sm text-neutral-600 dark:text-neutral-400">
+        The Internet Archive holds captures of a dedicated mobile site at
+        <span class="font-mono text-xs">${esc(data.mobileHost)}</span>, so the two
+        versions can be compared directly.
+      </p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="card p-5">
+          <p class="text-xs font-medium text-neutral-500">🖥 Desktop</p>
+          <p class="mt-1 font-mono text-sm text-neutral-900 dark:text-neutral-100">${esc(data.domain)}</p>
+          <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+            ${data.desktopFirstYear}–${data.desktopLastYear} ·
+            ${data.desktopCaptures.toLocaleString('en-US')} captures
+          </p>
+          <a href="/site/${esc(slug)}/${esc(date)}"
+             class="mt-3 inline-block text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">
+            View desktop in ${year} →
+          </a>
+        </div>
+        <div class="card p-5">
+          <p class="text-xs font-medium text-neutral-500">📱 Mobile</p>
+          <p class="mt-1 font-mono text-sm text-neutral-900 dark:text-neutral-100">${esc(data.mobileHost)}</p>
+          <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+            ${data.mobileFirstYear}–${data.mobileLastYear} ·
+            ${data.mobileCaptures.toLocaleString('en-US')} captures
+          </p>
+          <a href="/site/${encodeURIComponent(data.mobileHost)}/${esc(date)}"
+             class="mt-3 inline-block text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">
+            View mobile in ${year} →
+          </a>
+        </div>
+      </div>
+      <p class="mt-3 text-xs text-neutral-500">
+        ${shared.length} year${shared.length === 1 ? '' : 's'} have captures of both.
+        Open each side above, or
+        <a href="/timeline/${encodeURIComponent(data.mobileHost)}"
+           class="font-medium text-brand-600 hover:underline dark:text-brand-400">build a timeline of the mobile site</a>.
+      </p>`;
+    section.classList.remove('hidden');
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-design]').forEach((root) => {
+    initDesign(root);
+    void initDevices(root);
+  });
+</script>

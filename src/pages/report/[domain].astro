@@ -1,0 +1,431 @@
+---
+/**
+ * GET /report/[domain] — a printable history report.
+ *
+ * ── Why this shape ──────────────────────────────────────────────────────────
+ * The brief asks for exports: snapshot images, comparison images, a timeline
+ * report, a PDF. Of those, only some can be produced honestly here.
+ *
+ * Images cannot. Rendering an archived page to a picture needs a rendering
+ * service, and none is configured — the default preview strategy is a
+ * cross-origin <iframe>, whose pixels a browser will never let a page read
+ * (that's the same-origin policy, not a gap we can code around). Shipping an
+ * "export image" button that produced a placeholder would be worse than not
+ * having one, so the page says plainly what it can and can't do and points at
+ * the Internet Archive's own capture URLs, which are the correct place to get
+ * the original files.
+ *
+ * What it *can* produce is a genuinely complete report: the archive's holdings,
+ * the derived statistics, the full per-year capture table, the representative
+ * snapshot list with direct links, and the redesign candidates. Rendered with
+ * print styles it becomes a clean PDF through the browser's own "Save as PDF",
+ * with no dependency and no server-side rendering — and a JSON download for
+ * anyone who wants the underlying numbers.
+ *
+ * On attribution: everything here is derived from Internet Archive data, and
+ * the report credits it and links back to every source capture rather than
+ * re-hosting anything.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { getArchiveOverview } from '@services/archive-overview';
+import {
+  slugToDomain,
+  isValidDomain,
+  domainDisplayName,
+  domainToSlug,
+} from '@utils/domain';
+import {
+  computeStats,
+  buildFrames,
+  groupByYear,
+  detectArchivingSpikes,
+  formatCount,
+  formatCoverage,
+} from '@lib/history';
+import { formatISODate, todayISO } from '@utils/date';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { SITE } from '@lib/constants';
+
+export const prerender = false;
+
+const domain = slugToDomain(Astro.params.domain ?? '');
+
+if (!isValidDomain(domain)) {
+  return Astro.redirect('/?error=invalid-domain', 302);
+}
+
+const name = domainDisplayName(domain);
+const slug = domainToSlug(domain);
+
+const overview = await getArchiveOverview(domain);
+const stats = computeStats(overview);
+const years = groupByYear(overview.months);
+const frames = buildFrames(overview, 24);
+const spikes = detectArchivingSpikes(overview);
+
+const hasHistory = overview.status === 'ok' && overview.months.length > 0;
+
+Astro.response.headers.set(
+  'Cache-Control',
+  hasHistory
+    ? 'public, s-maxage=86400, stale-while-revalidate=604800'
+    : 'public, s-maxage=300, stale-while-revalidate=600'
+);
+
+const generatedOn = formatISODate(todayISO());
+const spanLabel = hasHistory ? `${stats.firstYear}–${stats.lastYear}` : '';
+
+const title = hasHistory
+  ? `${name} Website History Report — ${spanLabel}`
+  : `${name} Website History Report`;
+const description = hasHistory
+  ? `A printable report of what the Internet Archive holds for ${domain}: ${formatCount(stats.totalCaptures)} captures across ${stats.yearsSpanned} years, with a per-year breakdown and links to every representative snapshot.`
+  : `No archived history report could be produced for ${domain}.`;
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: `${name} history`, path: `/timeline/${slug}` },
+  { name: 'Report', path: `/report/${slug}` },
+]);
+
+/** Largest yearly total, for the inline bar widths in the table. */
+const maxYearly = Math.max(1, ...years.map((y) => y.captures));
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  noindex={!hasHistory}
+  jsonLd={breadcrumb}
+>
+  <div class="container-page max-w-4xl py-10">
+    {/* ── Toolbar (hidden when printing) ──────────────────────────────── */}
+    <div class="print:hidden">
+      <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
+        <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100"
+          >Home</a
+        >
+        <span class="mx-2" aria-hidden="true">/</span>
+        <a
+          href={`/timeline/${slug}`}
+          class="hover:text-neutral-900 dark:hover:text-neutral-100"
+          >{name} timeline</a
+        >
+        <span class="mx-2" aria-hidden="true">/</span>
+        <span class="text-neutral-700 dark:text-neutral-300">Report</span>
+      </nav>
+
+      {
+        hasHistory && (
+          <div class="mb-8 flex flex-wrap gap-3">
+            <button
+              type="button"
+              data-print
+              data-track="export_requested"
+              data-track-label="print-pdf"
+              class="btn-primary"
+            >
+              🖨 Print or save as PDF
+            </button>
+            <a
+              href={`/api/history?url=${encodeURIComponent(domain)}&frames=24`}
+              download={`${domain}-history.json`}
+              data-track="export_requested"
+              data-track-label="json"
+              class="btn-secondary"
+            >
+              ⬇ Download the data (JSON)
+            </a>
+            <a href={`/timeline/${slug}`} class="btn-secondary">
+              ← Back to the timeline
+            </a>
+          </div>
+        )
+      }
+    </div>
+
+    {
+      hasHistory ? (
+        <article class="report">
+          {/* ── Header ─────────────────────────────────────────────── */}
+          <header class="mb-8 border-b border-neutral-200 pb-6 dark:border-neutral-800">
+            <p class="eyebrow">Website history report</p>
+            <h1 class="mt-2 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
+              {name}
+            </h1>
+            <p class="mt-1 font-mono text-sm text-neutral-500">{domain}</p>
+            <p class="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
+              Archived history from <strong>{spanLabel}</strong>, as held by the
+              Internet Archive Wayback Machine. Generated {generatedOn} by{' '}
+              <a href={SITE.url} class="text-brand-600 dark:text-brand-400">
+                {SITE.name}
+              </a>
+              .
+            </p>
+          </header>
+
+          {/* ── Summary ────────────────────────────────────────────── */}
+          <section class="mb-10">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Summary
+            </h2>
+            <dl class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
+              {[
+                {
+                  term: 'First archived snapshot found',
+                  value: stats.firstArchivedDate
+                    ? formatISODate(stats.firstArchivedDate)
+                    : '—',
+                },
+                {
+                  term: 'Latest archived snapshot',
+                  value: stats.lastArchivedDate
+                    ? formatISODate(stats.lastArchivedDate)
+                    : '—',
+                },
+                {
+                  term: 'Years of archived history',
+                  value: String(stats.yearsSpanned),
+                },
+                {
+                  term: 'Years holding captures',
+                  value: String(stats.yearsWithCaptures),
+                },
+                {
+                  term: 'Captures on record',
+                  value: formatCount(stats.totalCaptures),
+                },
+                {
+                  term: 'Archive coverage',
+                  value: `${formatCoverage(stats.coverage)} of months`,
+                },
+              ].map((row) => (
+                <div>
+                  <dt class="text-xs font-medium text-neutral-500">
+                    {row.term}
+                  </dt>
+                  <dd class="mt-0.5 font-medium text-neutral-900 tabular-nums dark:text-neutral-100">
+                    {row.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            <p class="mt-5 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600 dark:bg-neutral-900/40 dark:text-neutral-400">
+              These figures describe the Internet Archive's holdings, not the
+              website's own history. A site can be considerably older than its
+              first capture, and the archive does not cover every day — the
+              coverage figure above is the share of months between the first and
+              latest capture that hold at least one snapshot.
+            </p>
+          </section>
+
+          {/* ── Per-year table ─────────────────────────────────────── */}
+          <section class="mb-10 break-inside-avoid">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Captures by year
+            </h2>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-neutral-200 text-left dark:border-neutral-800">
+                  <th class="py-1.5 pr-4 font-medium text-neutral-500">Year</th>
+                  <th class="py-1.5 pr-4 font-medium text-neutral-500">
+                    Captures
+                  </th>
+                  <th class="py-1.5 pr-4 font-medium text-neutral-500">
+                    Months covered
+                  </th>
+                  <th class="w-1/3 py-1.5 font-medium text-neutral-500">
+                    Relative volume
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {years.map((y) => (
+                  <tr class="border-b border-neutral-100 dark:border-neutral-800/60">
+                    <td class="py-1.5 pr-4 font-mono text-xs">{y.year}</td>
+                    <td class="py-1.5 pr-4 tabular-nums">
+                      {formatCount(y.captures)}
+                    </td>
+                    <td class="py-1.5 pr-4 tabular-nums text-neutral-500">
+                      {y.months.length} / 12
+                    </td>
+                    <td class="py-1.5">
+                      <div
+                        class="h-2 rounded-sm bg-neutral-800 dark:bg-neutral-300"
+                        style={`width:${Math.max(y.captures > 0 ? 2 : 0, (Math.log1p(y.captures) / Math.log1p(maxYearly)) * 100)}%`}
+                        aria-hidden="true"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p class="mt-2 text-xs text-neutral-500">
+              Bars use a logarithmic scale — crawl volume grows by orders of
+              magnitude over a site's life, and a linear scale would render
+              every early year as an invisible sliver.
+            </p>
+          </section>
+
+          {/* ── Representative snapshots ───────────────────────────── */}
+          <section class="mb-10">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Representative snapshots ({frames.length})
+            </h2>
+            <p class="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
+              Spread evenly across the archived span. Each links to the capture
+              on this site; the Wayback Machine holds the original.
+            </p>
+            <ol class="grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
+              {frames.map((frame) => (
+                <li class="flex justify-between gap-3 border-b border-neutral-100 py-1 dark:border-neutral-800/60">
+                  <a
+                    href={`/site/${slug}/${frame.date}`}
+                    class="font-mono text-xs text-brand-600 dark:text-brand-400"
+                  >
+                    {frame.label}
+                  </a>
+                  <span class="font-mono text-xs text-neutral-500 tabular-nums">
+                    {formatCount(frame.captures)} captures
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          {/* ── Spikes ─────────────────────────────────────────────── */}
+          {spikes.length > 0 && (
+            <section class="mb-10 break-inside-avoid">
+              <h2 class="mb-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                Years worth a closer look
+              </h2>
+              <p class="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
+                Years the archive crawled far harder than the years around them.
+                That often coincides with a relaunch, but it measures crawl
+                frequency, not the pages themselves.
+              </p>
+              <ul class="space-y-1 text-sm">
+                {spikes.map((spike) => (
+                  <li class="flex justify-between gap-3 border-b border-neutral-100 py-1 dark:border-neutral-800/60">
+                    <span class="font-mono text-xs">{spike.year}</span>
+                    <span class="text-xs text-neutral-500">
+                      {formatCount(spike.captures)} captures ·{' '}
+                      {Math.round(spike.ratio)}× the nearby years
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* ── What this report cannot include ────────────────────── */}
+          <section class="mb-10 break-inside-avoid">
+            <h2 class="mb-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              About this report
+            </h2>
+            <div class="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+              <p>
+                Every figure is derived from the Internet Archive's public
+                capture index for{' '}
+                <span class="font-mono text-xs">{domain}</span>. Nothing here is
+                re-hosted: each snapshot link resolves to the Wayback Machine's
+                own copy.
+              </p>
+              <p>
+                <strong class="font-medium text-neutral-800 dark:text-neutral-200">
+                  Images are not included.
+                </strong>{' '}
+                Turning an archived page into a picture requires a rendering
+                service, which this site does not run — previews are live embeds
+                of the archive, and a browser will not let a page read pixels
+                from another origin. To save a capture as an image, open it on
+                the Wayback Machine and use your browser's own screenshot or
+                print function.
+              </p>
+              <p>
+                The Internet Archive's terms govern reuse of the captures
+                themselves. This report links to them rather than redistributing
+                them.
+              </p>
+            </div>
+          </section>
+
+          <footer class="border-t border-neutral-200 pt-4 text-xs text-neutral-500 dark:border-neutral-800">
+            <p>
+              {name} website history report · generated {generatedOn} ·{' '}
+              {SITE.url}/timeline/{slug}
+            </p>
+            <p class="mt-1">
+              Source data: Internet Archive Wayback Machine (archive.org).
+            </p>
+          </footer>
+        </article>
+      ) : (
+        <div class="rounded-xl border border-dashed border-neutral-300 p-10 text-center dark:border-neutral-700">
+          <span class="text-4xl" aria-hidden="true">
+            📄
+          </span>
+          <p class="mt-4 font-medium text-neutral-800 dark:text-neutral-200">
+            No report available for {domain}
+          </p>
+          <p class="mx-auto mt-1 max-w-md text-sm text-neutral-500">
+            {overview.message ?? 'There are no archived captures to report on.'}
+          </p>
+          <a href="/explore" class="btn-primary mt-6">
+            Look up another website
+          </a>
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  /* Print styles: turn the page into a clean document. The site chrome, the
+     toolbar and every link decoration go; type drops to a print scale; and
+     sections are kept off page breaks where splitting them would be ugly. */
+  @media print {
+    :global(header[class*='sticky']),
+    :global(footer[class*='mt-24']) {
+      display: none !important;
+    }
+
+    :global(body) {
+      background: #fff !important;
+      color: #000 !important;
+    }
+
+    .report {
+      font-size: 11pt;
+    }
+
+    .report :global(a) {
+      color: #000 !important;
+      text-decoration: none;
+    }
+
+    .report :global(section) {
+      break-inside: avoid-page;
+    }
+
+    .report :global(h2) {
+      break-after: avoid-page;
+    }
+
+    /* Bars are backgrounds; without this most browsers drop them entirely. */
+    .report :global(*) {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+</style>
+
+<script>
+  // The print button is the whole export mechanism: the browser's own dialog
+  // offers "Save as PDF" on every current platform, which beats shipping a PDF
+  // library for a document that is already laid out correctly.
+  document
+    .querySelector<HTMLButtonElement>('[data-print]')
+    ?.addEventListener('click', () => window.print());
+</script>

@@ -361,8 +361,25 @@ const hasHistory = overview.status === 'ok' && overview.months.length > 0;
         .forEach((el) => el.classList.remove('hidden'));
     }
 
+    /* Record that the timeline was actually used — once per page view, so a
+       few zoom clicks read as one engaged visitor rather than five events. */
+    let interactionRecorded = false;
+    function recordInteraction(kind: string) {
+      if (interactionRecorded) return;
+      interactionRecorded = true;
+      (
+        window as unknown as {
+          whvTrack?: (e: string, p?: Record<string, unknown>) => void;
+        }
+      ).whvTrack?.('timeline_interaction', {
+        domain: root.dataset.slug,
+        kind,
+      });
+    }
+
     root.querySelectorAll<HTMLButtonElement>('[data-zoom]').forEach((btn) => {
       btn.addEventListener('click', () => {
+        recordInteraction('zoom');
         applyZoom(zoomIndex + (btn.dataset.zoom === 'in' ? 1 : -1));
       });
     });
@@ -384,6 +401,12 @@ const hasHistory = overview.status === 'ok' && overview.months.length > 0;
     function hideTip() {
       tip?.classList.add('hidden');
     }
+
+    root.addEventListener('click', (e) => {
+      if ((e.target as Element)?.closest?.('[data-marker]')) {
+        recordInteraction('marker');
+      }
+    });
 
     root.addEventListener('pointerover', (e) => {
       const marker = (e.target as Element)?.closest?.<HTMLElement>(

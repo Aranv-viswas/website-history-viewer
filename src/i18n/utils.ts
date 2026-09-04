@@ -82,6 +82,8 @@ export const NON_LOCALIZED_PREFIXES = [
   '/compare',
   '/timeline',
   '/evolution',
+  '/design',
+  '/report',
   '/site',
   '/search',
   '/on-this-day',

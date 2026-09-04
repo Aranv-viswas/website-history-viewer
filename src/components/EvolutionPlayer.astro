@@ -543,6 +543,15 @@ const DEFAULT_SPEED_INDEX = 1;
         timer = window.setInterval(() => {
           if (!step(1)) setPlaying(false);
         }, speedMs);
+        // Only a genuine start counts — the same button also pauses.
+        (
+          window as unknown as {
+            whvTrack?: (e: string, p?: Record<string, unknown>) => void;
+          }
+        ).whvTrack?.('evolution_played', {
+          domain: root.dataset.domain,
+          frames: frames.length,
+        });
       }
       playBtn?.setAttribute('aria-pressed', String(on));
       playBtn?.setAttribute(

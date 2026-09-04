@@ -13,6 +13,7 @@
  */
 import BaseLayout from '@layouts/BaseLayout.astro';
 import ComparisonView from '@components/ComparisonView.astro';
+import ChangeAnalysis from '@components/ChangeAnalysis.astro';
 import ShareButtons from '@components/ShareButtons.astro';
 import SearchForm from '@components/SearchForm.astro';
 import HistoryTimeline from '@components/HistoryTimeline.astro';
@@ -173,6 +174,19 @@ const breadcrumb = breadcrumbJsonLd([
     </header>
 
     <ComparisonView result={result} labelA={labelA} labelB={labelB} />
+
+    {
+      /* The markup analysis only means something when both captures exist. */
+      snapA.available && snapB.available && (
+        <ChangeAnalysis
+          domain={domain}
+          dateA={a}
+          dateB={b}
+          labelA={labelA}
+          labelB={labelB}
+        />
+      )
+    }
 
     <div class="mt-8 flex flex-wrap items-center justify-between gap-4">
       <ShareButtons

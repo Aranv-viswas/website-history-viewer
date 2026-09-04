@@ -207,3 +207,118 @@ export interface Collection {
     note: string;
   }>;
 }
+
+/* ────────────────────────── Page (markup) analysis ───────────────────────── */
+
+/** One estimated colour from a page's declared palette. */
+export interface ColorSample {
+  /** Lowercase #rrggbb. */
+  hex: string;
+  /** How strongly the colour was declared. Relative, not a pixel count. */
+  weight: number;
+}
+
+/**
+ * A structural fingerprint of one archived page, derived from its HTML source.
+ *
+ * Every field describes the *markup*, never the rendered result — see
+ * @services/page-analysis for why that distinction is load-bearing.
+ */
+export interface PageFingerprint {
+  domain: string;
+  /** Wayback timestamp of the capture that was analysed. */
+  timestamp: string;
+  /** ISO date of that capture. */
+  date: string;
+  /** False when the page could not be fetched or parsed. */
+  ok: boolean;
+  /** Why, when `ok` is false. */
+  message: string | null;
+  /** Bytes of HTML analysed (capped). */
+  bytes: number;
+
+  title: string | null;
+  description: string | null;
+  generator: string | null;
+
+  headings: number;
+  images: number;
+  links: number;
+  scripts: number;
+  stylesheets: number;
+  inlineStyleBlocks: number;
+  tables: number;
+  divs: number;
+  forms: number;
+  /** Count of header/nav/main/footer/section/article/aside elements. */
+  semanticTags: number;
+
+  usesFrames: boolean;
+  usesFlash: boolean;
+  hasViewportMeta: boolean;
+  /** Declares a viewport meta or width-based media queries. */
+  isResponsive: boolean;
+  /** Many tables and no semantic elements — the pre-CSS layout signature. */
+  usesTableLayout: boolean;
+
+  /** Text of the first navigation links found. */
+  navLinks: string[];
+  /** Estimated declared palette, most-declared first. */
+  colors: ColorSample[];
+  /** Logo *candidates*, best guess first — not a confirmed logo. */
+  logos: Array<{ url: string; alt: string | null; score: number }>;
+}
+
+/** One observed difference between two page fingerprints. */
+export interface PageChange {
+  kind:
+    | 'layout'
+    | 'structure'
+    | 'navigation'
+    | 'logo'
+    | 'color'
+    | 'media'
+    | 'mobile'
+    | 'size'
+    | 'content';
+  /** Contribution to the overall change score. */
+  weight: number;
+  summary: string;
+  detail: string;
+}
+
+/** One frame of a design-evolution sequence. */
+export interface DesignFrame {
+  year: number;
+  date: string;
+  label: string;
+  ok: boolean;
+  message: string | null;
+  title: string | null;
+  colors: ColorSample[];
+  logo: { url: string; alt: string | null } | null;
+  usesTableLayout: boolean;
+  usesFlash: boolean;
+  isResponsive: boolean;
+  /** Markup-distance score against the previous frame, 0-100. */
+  changeScore: number | null;
+  /** Observations behind `changeScore`. */
+  changes: PageChange[];
+}
+
+/** A mobile-vs-desktop capture pairing for one domain. */
+export interface DeviceComparison {
+  domain: string;
+  /** The mobile host that has captures, e.g. "m.facebook.com", or null. */
+  mobileHost: string | null;
+  hasMobileCaptures: boolean;
+  mobileFirstYear: number | null;
+  mobileLastYear: number | null;
+  mobileCaptures: number;
+  desktopFirstYear: number | null;
+  desktopLastYear: number | null;
+  desktopCaptures: number;
+  /** Years both a desktop and a mobile capture exist. */
+  overlappingYears: number[];
+  message: string | null;
+}

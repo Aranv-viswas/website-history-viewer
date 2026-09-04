@@ -90,6 +90,11 @@ export const GET: APIRoute = async ({ site }) => {
       changefreq: 'weekly',
       priority: 0.7,
     });
+    entries.push({
+      path: `/design/${slug}`,
+      changefreq: 'monthly',
+      priority: 0.6,
+    });
   }
 
   const urlBlock = (path: string, changefreq?: string, priority?: number) =>
