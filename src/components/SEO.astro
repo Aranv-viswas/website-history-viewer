@@ -77,10 +77,14 @@ const alternates = getAlternateLinks(
 <link rel="canonical" href={canonicalHref} />
 <meta
   name="robots"
-  content={noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1'}
+  content={noindex
+    ? 'noindex, nofollow'
+    : 'index, follow, max-image-preview:large, max-snippet:-1'}
 />
 
-{/* hreflang alternates — one per locale plus x-default, for international SEO. */}
+{
+  /* hreflang alternates — one per locale plus x-default, for international SEO. */
+}
 {
   !noindex &&
     alternates.map((alt) => (

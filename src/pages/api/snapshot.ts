@@ -31,7 +31,10 @@ export const GET: APIRoute = async ({ url }) => {
 
   if (!isValidDomain(domain)) {
     return json(
-      { error: 'invalid_domain', message: 'Provide a valid ?domain=, e.g. google.com' },
+      {
+        error: 'invalid_domain',
+        message: 'Provide a valid ?domain=, e.g. google.com',
+      },
       400
     );
   }

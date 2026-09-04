@@ -30,12 +30,12 @@ export const GET: APIRoute = ({ url, redirect }) => {
 
   if (compare) {
     const safeDateB = isValidArchiveDate(dateBRaw) ? dateBRaw : todayISO();
-    const qs = new URLSearchParams({
-      domain,
-      a: safeDate,
-      b: safeDateB,
-    });
-    return redirect(`/compare?${qs.toString()}`, 302);
+    // Send people straight to the canonical, shareable comparison URL rather
+    // than to the query-string form (which would only 301 here anyway).
+    return redirect(
+      `/compare/${domainToSlug(domain)}/${safeDate}/${safeDateB}`,
+      302
+    );
   }
 
   return redirect(`/site/${domainToSlug(domain)}/${safeDate}`, 302);

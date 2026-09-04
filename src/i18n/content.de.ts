@@ -3,8 +3,40 @@ import type { PageContent } from './content';
 /** German (de) page content. Mirrors the English source in src/i18n/content.ts. */
 export const de: PageContent = {
   home: {
-    metaTitle: 'Website History Viewer – Verlauf jeder Website kostenlos prüfen & ansehen',
+    metaTitle:
+      'Website History Viewer – Verlauf jeder Website kostenlos prüfen & ansehen',
     recentHeading: 'Zuletzt angesehen',
+    modes: {
+      eyebrow: 'So funktioniert es',
+      heading: 'Drei Wege in die Vergangenheit einer Website',
+      sub: 'Die Geschichte sehen, sehen was sich geändert hat, und dann zusehen.',
+      items: [
+        {
+          emoji: '📅',
+          title: 'Zeitleiste',
+          body: 'Jedes Jahr, in dem das Internet Archive die Seite erfasst hat, auf einer interaktiven Achse — Lücken bleiben sichtbar.',
+          cta: 'Zeitleiste erstellen →',
+          href: '/timeline/google.com',
+        },
+        {
+          emoji: '⇄',
+          title: 'Vergleichen',
+          body: 'Zwei Daten nebeneinander legen oder den Vorher/Nachher-Regler ziehen und genau sehen, was sich verändert hat.',
+          cta: 'Zwei Daten vergleichen →',
+          href: '/compare',
+        },
+        {
+          emoji: '▶',
+          title: 'Entwicklung',
+          body: 'Die Aufnahmen der Reihe nach abspielen und zusehen, wie sich eine Website über Jahrzehnte verwandelt.',
+          cta: 'Entwicklung abspielen →',
+          href: '/evolution/google.com',
+        },
+      ],
+      collectionsCta: 'Sammlungen ansehen',
+      onThisDayCta: 'An diesem Tag',
+      randomCta: 'Zufällige Website',
+    },
     examples: {
       eyebrow: 'Beispiele',
       heading: 'Beliebte Beispiele',
@@ -184,7 +216,8 @@ export const de: PageContent = {
           'Ja. Die Vergleichsansicht stellt zwei beliebige Daten nebeneinander, sodass du den Änderungsverlauf einer Website sofort prüfen kannst — perfekt, um ein „Damals vs. heute“-Redesign zu sehen oder zu bestätigen, wann eine Marke ihr Aussehen aufgefrischt hat.',
       },
       {
-        question: 'Funktioniert der Website-Verlauf-Checker auf Android, Mac und PC?',
+        question:
+          'Funktioniert der Website-Verlauf-Checker auf Android, Mac und PC?',
         answer:
           'Ja. Der Website-Verlauf-Viewer ist vollständig responsiv und läuft in jedem modernen Browser, sodass du den Website-Verlauf auf Android, iPhone, iPad, Mac und Windows-PC prüfen kannst, ohne etwas zu installieren.',
       },

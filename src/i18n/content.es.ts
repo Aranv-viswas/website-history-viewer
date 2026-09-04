@@ -6,6 +6,37 @@ export const es: PageContent = {
     metaTitle:
       'Visor de Historial de Sitios Web – Consulta y Mira el Historial de Cualquier Sitio Web Gratis',
     recentHeading: 'Vistos recientemente',
+    modes: {
+      eyebrow: 'Cómo funciona',
+      heading: 'Tres formas de viajar al pasado de un sitio web',
+      sub: 'Mira la historia, mira qué cambió y luego míralo suceder.',
+      items: [
+        {
+          emoji: '📅',
+          title: 'Línea de tiempo',
+          body: 'Cada año que Internet Archive capturó el sitio, en un eje interactivo — con los vacíos a la vista.',
+          cta: 'Crear una línea de tiempo →',
+          href: '/timeline/google.com',
+        },
+        {
+          emoji: '⇄',
+          title: 'Comparar',
+          body: 'Pon dos fechas lado a lado, o arrastra el control antes/después para ver exactamente qué cambió.',
+          cta: 'Comparar dos fechas →',
+          href: '/compare',
+        },
+        {
+          emoji: '▶',
+          title: 'Evolución',
+          body: 'Reproduce las instantáneas en orden y observa cómo un sitio se transforma década tras década.',
+          cta: 'Reproducir una evolución →',
+          href: '/evolution/google.com',
+        },
+      ],
+      collectionsCta: 'Ver colecciones',
+      onThisDayCta: 'Un día como hoy',
+      randomCta: 'Sitio aleatorio',
+    },
     examples: {
       eyebrow: 'Ejemplos',
       heading: 'Ejemplos populares',
@@ -183,7 +214,8 @@ export const es: PageContent = {
           'Busca «apple.com» o «google.com» en el cuadro de búsqueda de historial de sitios web y elige un año. Puedes ver el historial del sitio web de Apple hasta la era de los iMac de colores caramelo y explorar el historial del sitio web de Google desde su escueta página de inicio de 1998 en adelante.',
       },
       {
-        question: '¿Hasta qué punto se remonta el archivo de historial de sitios web?',
+        question:
+          '¿Hasta qué punto se remonta el archivo de historial de sitios web?',
         answer:
           'El archivo de historial de sitios web se basa en la Wayback Machine de Internet Archive, que comenzó a capturar páginas en 1996. Para la mayoría de los sitios conocidos puedes ver el historial de sitios web desde finales de la década de 1990 hasta el día de hoy, según cuándo se rastreó cada página por primera vez.',
       },
@@ -193,7 +225,8 @@ export const es: PageContent = {
           'Sí. La vista de comparación coloca dos fechas cualesquiera una al lado de la otra para que puedas consultar al instante el historial de cambios de un sitio web: perfecto para ver un rediseño «antes vs. ahora» o confirmar cuándo una marca renovó su aspecto.',
       },
       {
-        question: '¿Funciona el verificador de historial de sitios web en Android, Mac y PC?',
+        question:
+          '¿Funciona el verificador de historial de sitios web en Android, Mac y PC?',
         answer:
           'Sí. El visor de historial de sitios web es totalmente adaptable y se ejecuta en cualquier navegador moderno, así que puedes consultar el historial de sitios web en Android, iPhone, iPad, Mac y PC con Windows sin nada que instalar.',
       },
@@ -317,7 +350,8 @@ export const es: PageContent = {
       </div>`,
   },
   histories: {
-    metaTitle: 'Historiales de sitios web: la evolución del diseño de sitios icónicos',
+    metaTitle:
+      'Historiales de sitios web: la evolución del diseño de sitios icónicos',
     metaDescription:
       'Explora la evolución del diseño de los sitios web más icónicos de la web —Google, YouTube, Facebook, Amazon, Reddit y más— con capturas de pantalla archivadas y líneas de tiempo.',
     heading: 'Historiales de sitios web',

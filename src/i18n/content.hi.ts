@@ -3,8 +3,40 @@ import type { PageContent } from './content';
 /** Hindi (hi) page content. Mirrors the English source in src/i18n/content.ts. */
 export const hi: PageContent = {
   home: {
-    metaTitle: 'Website History Viewer – किसी भी वेबसाइट का इतिहास मुफ़्त में देखें और जांचें',
+    metaTitle:
+      'Website History Viewer – किसी भी वेबसाइट का इतिहास मुफ़्त में देखें और जांचें',
     recentHeading: 'हाल ही में देखे गए',
+    modes: {
+      eyebrow: 'यह कैसे काम करता है',
+      heading: 'किसी वेबसाइट के अतीत में जाने के तीन तरीके',
+      sub: 'इतिहास देखें, देखें क्या बदला, फिर उसे होते हुए देखें।',
+      items: [
+        {
+          emoji: '📅',
+          title: 'टाइमलाइन',
+          body: 'हर वह साल जब इंटरनेट आर्काइव ने साइट को सहेजा, एक इंटरैक्टिव अक्ष पर — खाली अंतराल भी दिखते हुए।',
+          cta: 'टाइमलाइन बनाएँ →',
+          href: '/timeline/google.com',
+        },
+        {
+          emoji: '⇄',
+          title: 'तुलना करें',
+          body: 'दो तारीखें साथ-साथ रखें, या पहले/बाद वाला स्लाइडर खींचकर देखें कि वास्तव में क्या बदला।',
+          cta: 'दो तारीखों की तुलना करें →',
+          href: '/compare',
+        },
+        {
+          emoji: '▶',
+          title: 'विकास',
+          body: 'स्नैपशॉट क्रम से चलाएँ और देखें कि कोई वेबसाइट दशकों में कैसे बदलती है।',
+          cta: 'विकास चलाएँ →',
+          href: '/evolution/google.com',
+        },
+      ],
+      collectionsCta: 'संग्रह देखें',
+      onThisDayCta: 'आज के दिन',
+      randomCta: 'यादृच्छिक वेबसाइट',
+    },
     examples: {
       eyebrow: 'उदाहरण',
       heading: 'लोकप्रिय उदाहरण',

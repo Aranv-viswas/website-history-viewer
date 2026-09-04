@@ -1,0 +1,68 @@
+---
+/**
+ * FullscreenSupport — the shared behaviour behind every `data-fullscreen-btn`.
+ *
+ * Renders no markup. It contributes one delegated click handler and the global
+ * styles that stretch a framed preview to fill the viewport, so any component
+ * can opt in by marking a container `data-fullscreen-target` and putting a
+ * `data-fullscreen-btn` button inside it.
+ *
+ * This lives on its own because the behaviour is needed by components that
+ * don't render a <ScreenshotFrame> — the evolution player and the comparison
+ * slider both do. Astro hoists and de-duplicates component `<script>` and
+ * `<style is:global>` blocks, so including it several times on one page still
+ * ships a single copy.
+ */
+---
+
+<style is:global>
+  [data-fullscreen-target]:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    aspect-ratio: auto;
+    background: #000;
+  }
+  [data-fullscreen-target]:fullscreen iframe,
+  [data-fullscreen-target]:fullscreen img {
+    height: 100%;
+    width: 100%;
+  }
+  [data-fullscreen-target]:fullscreen img {
+    object-fit: contain;
+  }
+</style>
+
+<script>
+  // Toggle native fullscreen on the framed preview a button lives inside.
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as Element)?.closest?.('[data-fullscreen-btn]');
+    if (!btn) return;
+    // Previews can be wrapped in links (e.g. the timeline) — don't navigate.
+    e.preventDefault();
+    e.stopPropagation();
+
+    const target = btn.closest('[data-fullscreen-target]');
+    if (!target) return;
+
+    if (document.fullscreenElement === target) {
+      document.exitFullscreen?.();
+    } else {
+      (target as HTMLElement).requestFullscreen?.().catch(() => {});
+    }
+  });
+
+  // Swap the enter/exit icon to match the current fullscreen state.
+  document.addEventListener('fullscreenchange', () => {
+    const active = document.fullscreenElement;
+    document.querySelectorAll('[data-fullscreen-target]').forEach((el) => {
+      const on = el === active;
+      el.querySelectorAll('[data-fs-icon="enter"]').forEach((n) =>
+        n.classList.toggle('hidden', on)
+      );
+      el.querySelectorAll('[data-fs-icon="exit"]').forEach((n) =>
+        n.classList.toggle('hidden', !on)
+      );
+    });
+  });
+</script>

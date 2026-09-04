@@ -11,6 +11,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { SITE, POPULAR_SITES } from '@lib/constants';
+import { COLLECTIONS } from '@lib/collections';
 import { domainToSlug } from '@utils/domain';
 import {
   LOCALES,
@@ -47,6 +48,9 @@ export const GET: APIRoute = async ({ site }) => {
   const entries: Entry[] = [
     { path: '/', changefreq: 'weekly', priority: 1.0 },
     { path: '/compare', changefreq: 'weekly', priority: 0.8 },
+    { path: '/explore', changefreq: 'weekly', priority: 0.8 },
+    { path: '/collections', changefreq: 'weekly', priority: 0.8 },
+    { path: '/on-this-day', changefreq: 'daily', priority: 0.6 },
     { path: '/histories', changefreq: 'weekly', priority: 0.8 },
     { path: '/about', changefreq: 'yearly', priority: 0.3 },
     { path: '/contact', changefreq: 'yearly', priority: 0.3 },
@@ -64,12 +68,27 @@ export const GET: APIRoute = async ({ site }) => {
     });
   }
 
+  // Curated collections (/collection/early-internet, …).
+  for (const collection of COLLECTIONS) {
+    entries.push({
+      path: `/collection/${collection.slug}`,
+      changefreq: 'monthly',
+      priority: 0.6,
+    });
+  }
+
   // Curated popular-site timelines (/timeline/google.com, …).
   for (const sitePreset of POPULAR_SITES) {
+    const slug = domainToSlug(sitePreset.domain);
     entries.push({
-      path: `/timeline/${domainToSlug(sitePreset.domain)}`,
+      path: `/timeline/${slug}`,
       changefreq: 'weekly',
-      priority: 0.6,
+      priority: 0.7,
+    });
+    entries.push({
+      path: `/evolution/${slug}`,
+      changefreq: 'weekly',
+      priority: 0.7,
     });
   }
 

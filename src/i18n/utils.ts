@@ -81,10 +81,17 @@ export function localizePath(pathname: string, lang: Lang): string {
 export const NON_LOCALIZED_PREFIXES = [
   '/compare',
   '/timeline',
+  '/evolution',
   '/site',
   '/search',
+  '/on-this-day',
+  '/random',
   '/api',
 ] as const;
+// Note: /explore, /collections and /collection/* are deliberately absent —
+// they're prerendered content pages, so they get locale variants and the
+// trailing-slash form that Astro actually emits. Only `prerender = false`
+// routes belong in the list above.
 
 /** Is `path` an on-demand tool route that isn't generated per-locale? */
 export function isLocalizable(path: string): boolean {

@@ -1,22 +1,49 @@
 ---
 /**
- * GET /timeline/[domain] — a generated, year-by-year visual history.
+ * GET /timeline/[domain] — the full visual history of one website.
  *
- * Resolves a snapshot for each year in the range and renders them as a vertical
- * timeline (previews lazy-load as you scroll). On-demand rendered because the
- * domain is arbitrary.
+ * Rebuilt around the archive overview (see @services/archive-overview), which
+ * returns every month the Archive holds captures for in well under a second.
+ * That single fast call replaces the previous approach of resolving one
+ * availability lookup per year — fewer upstream requests, and a far richer
+ * picture: real capture density, exact first/last dates, and a representative
+ * sample drawn from the whole span rather than a fixed every-4-years grid.
+ *
+ * The page renders three layers, in decreasing density:
+ *   1. HistoryStats     — the headline numbers
+ *   2. HistoryTimeline  — the proportional horizontal axis (server-rendered)
+ *   3. A thumbnail rail — lazy previews of the representative snapshots
+ *
+ * Snapshots are NOT resolved server-side. The thumbnails resolve themselves via
+ * /api/snapshot as they scroll into view, so the page's time-to-first-byte is
+ * one upstream call regardless of how long the history is.
  */
 import BaseLayout from '@layouts/BaseLayout.astro';
-import Timeline from '@components/Timeline.astro';
+import HistoryTimeline from '@components/HistoryTimeline.astro';
+import HistoryStats from '@components/HistoryStats.astro';
+import SnapshotThumb from '@components/SnapshotThumb.astro';
 import SearchForm from '@components/SearchForm.astro';
-import { getSnapshots } from '@services/wayback';
-import { toEmbeddableUrl, screenshotApiUrl } from '@services/screenshot';
-import { slugToDomain, isValidDomain, domainDisplayName, domainToSlug } from '@utils/domain';
-import { timelineYears, yearToISO, currentYear } from '@utils/date';
+import ShareButtons from '@components/ShareButtons.astro';
+import { getArchiveOverview } from '@services/archive-overview';
+import {
+  slugToDomain,
+  isValidDomain,
+  domainDisplayName,
+  domainToSlug,
+} from '@utils/domain';
+import {
+  computeStats,
+  buildFrames,
+  detectArchivingSpikes,
+  formatCount,
+} from '@lib/history';
 import { breadcrumbJsonLd } from '@lib/seo';
-import type { TimelineEntry } from '@lib/types';
+import { SITE } from '@lib/constants';
 
 export const prerender = false;
+
+/** Enough points to show an evolution, few enough to stay fast and readable. */
+const FRAME_COUNT = 24;
 
 const domain = slugToDomain(Astro.params.domain ?? '');
 
@@ -27,80 +54,209 @@ if (!isValidDomain(domain)) {
 const name = domainDisplayName(domain);
 const slug = domainToSlug(domain);
 
-// Build the list of years and resolve a snapshot for each.
-const years = timelineYears(1999, 4);
-const snapshots = await getSnapshots(domain, years.map(yearToISO));
-const entries: TimelineEntry[] = years.map((year, i) => ({
-  year,
-  date: yearToISO(year),
-  snapshot: snapshots[i],
-}));
+const overview = await getArchiveOverview(domain);
+const stats = computeStats(overview);
+const frames = buildFrames(overview, FRAME_COUNT);
+const spikes = detectArchivingSpikes(overview);
+const spikeYears = spikes.map((s) => s.year);
 
-const available = entries.filter((e) => e.snapshot.available);
-const firstYear = available[0]?.year ?? years[0];
-const lastYear = available[available.length - 1]?.year ?? currentYear();
+const hasHistory = overview.status === 'ok' && frames.length > 0;
 
-// Cache the assembled timeline at the edge. Use a shorter window when nothing
-// resolved, so a domain that gains captures later isn't stuck showing an empty
-// timeline for a full day.
+/* Edge caching. A found history is effectively immutable, so cache it for a
+   day. Everything else gets a short window: a transient Archive outage or a
+   domain that later gains captures must not be pinned for 24 hours. */
 Astro.response.headers.set(
   'Cache-Control',
-  available.length
+  hasHistory
     ? 'public, s-maxage=86400, stale-while-revalidate=604800'
     : 'public, s-maxage=300, stale-while-revalidate=600'
 );
 
-const title = `${name} Website History — Visual Timeline & Archive`;
-const description = `Check the ${name} website history year by year, from ${firstYear} to ${currentYear()}. A website history tracker that turns archived Wayback Machine screenshots into one visual timeline so you can see how ${name} evolved.`;
+const spanLabel = hasHistory ? `${stats.firstYear} to ${stats.lastYear}` : '';
 
-// Social card: render the earliest available capture, if a screenshot service
-// is configured. Falls back to the site default OG image otherwise.
-const ogArchivedUrl = available[0]?.snapshot.archivedUrl;
-const ogImage = ogArchivedUrl
-  ? (screenshotApiUrl(toEmbeddableUrl(ogArchivedUrl)) ?? undefined)
-  : undefined;
+const title = hasHistory
+  ? `${name} Website History — Timeline from ${stats.firstYear} to ${stats.lastYear}`
+  : `${name} Website History — Archive Timeline`;
+
+const description = hasHistory
+  ? `See how ${domain} changed from ${spanLabel}. An interactive timeline of ${formatCount(stats.totalCaptures)} archived Wayback Machine captures, with ${frames.length} representative snapshots you can open, compare, and play back as an evolution.`
+  : `We could not build an archived timeline for ${domain}. ${overview.message ?? ''}`.trim();
+
+const canonicalPath = `/timeline/${slug}`;
+const shareUrl = new URL(canonicalPath, SITE.url).href;
 
 const breadcrumb = breadcrumbJsonLd([
   { name: 'Home', path: '/' },
-  { name: `${name} timeline`, path: `/timeline/${slug}` },
+  { name: `${name} history`, path: canonicalPath },
 ]);
+
+/* Structured data for the timeline itself: an ordered list of the snapshots we
+   surface. Gives search engines the span and the individual dated entries. */
+const itemListJsonLd = hasHistory
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: `${name} archived website snapshots, ${spanLabel}`,
+      numberOfItems: frames.length,
+      itemListElement: frames.map((frame, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: `${name} in ${frame.label}`,
+        url: new URL(`/site/${slug}/${frame.date}`, SITE.url).href,
+      })),
+    }
+  : null;
 ---
 
 <BaseLayout
   title={title}
   description={description}
-  image={ogImage}
-  jsonLd={breadcrumb}
+  noindex={!hasHistory}
+  jsonLd={itemListJsonLd ? [breadcrumb, itemListJsonLd] : breadcrumb}
 >
   <div class="container-page py-10">
-    <header class="mb-10">
+    {/* Breadcrumb */}
+    <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
+      <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >Home</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <span class="text-neutral-700 dark:text-neutral-300">{name} timeline</span
+      >
+    </nav>
+
+    <header class="mb-8">
+      <p class="eyebrow">Website history</p>
       <h1
-        class="text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
+        class="mt-2 text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
       >
         {name} through the years
       </h1>
-      <p class="mt-2 max-w-2xl text-neutral-600 dark:text-neutral-400">
-        A year-by-year visual timeline of <strong>{domain}</strong>, built from
-        Internet Archive snapshots. {available.length} of {entries.length} years
-        have an available capture.
+      <p class="mt-3 max-w-2xl text-neutral-600 dark:text-neutral-400">
+        {
+          hasHistory
+            ? `An interactive timeline of ${domain}, built from ${formatCount(stats.totalCaptures)} Internet Archive captures between ${spanLabel}.`
+            : `We could not build a timeline for ${domain}.`
+        }
       </p>
 
       {
-        available.length >= 2 && (
-          <a
-            href={`/compare?domain=${encodeURIComponent(domain)}&a=${yearToISO(firstYear)}&b=${yearToISO(lastYear)}`}
-            class="btn-primary mt-5"
-          >
-            ⇄ Compare {firstYear} vs {lastYear}
-          </a>
+        hasHistory && (
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <a href={`/evolution/${slug}`} class="btn-primary">
+              ▶ Play evolution
+            </a>
+            <a
+              href={`/compare/${slug}/${stats.firstArchivedDate}/${stats.lastArchivedDate}`}
+              class="btn-secondary"
+            >
+              ⇄ Compare {stats.firstYear} vs {stats.lastYear}
+            </a>
+          </div>
         )
       }
     </header>
 
-    <Timeline domain={domain} entries={entries} />
+    {/* ── Statistics ─────────────────────────────────────────────────── */}
+    <div class="mb-10">
+      <HistoryStats
+        stats={stats}
+        overview={overview}
+        representativeCount={frames.length}
+        spikeYears={spikeYears}
+      />
+    </div>
 
-    <section class="mt-16 max-w-3xl">
-      <h2 class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+    {/* ── The interactive timeline ───────────────────────────────────── */}
+    <div class="mb-12">
+      <HistoryTimeline
+        overview={overview}
+        frames={frames}
+        spikeYears={spikeYears}
+      />
+    </div>
+
+    {/* ── Representative snapshot rail ───────────────────────────────── */}
+    {
+      hasHistory && (
+        <section class="mb-14" aria-labelledby="snapshots-heading">
+          <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2
+              id="snapshots-heading"
+              class="text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+            >
+              {frames.length} snapshots across {stats.yearsSpanned} years
+            </h2>
+            <p class="text-sm text-neutral-500">
+              Previews load as you scroll. Select one to open it full size.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+            {frames.map((frame) => (
+              <SnapshotThumb
+                domain={domain}
+                date={frame.date}
+                label={frame.label}
+              />
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    {/* ── Years worth a look ─────────────────────────────────────────── */}
+    {
+      spikes.length > 0 && (
+        <section class="mb-14 max-w-3xl" aria-labelledby="spikes-heading">
+          <h2
+            id="spikes-heading"
+            class="mb-2 text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+          >
+            Years worth a look
+          </h2>
+          <p class="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
+            In these years the Internet Archive captured {name} far more often
+            than in the years around them. That frequently lines up with a
+            relaunch or a burst of attention — but it measures how often the
+            archive crawled the site, not what the pages looked like. Open them
+            and judge for yourself.
+          </p>
+          <ul class="flex flex-wrap gap-2">
+            {spikes.map((spike) => (
+              <li>
+                <a
+                  href={`/site/${slug}/${spike.year}-06-15`}
+                  class="inline-flex items-baseline gap-2 rounded-full border border-neutral-200 bg-white px-3.5 py-1.5 text-sm font-medium text-neutral-800 transition hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200"
+                >
+                  {spike.year}
+                  <span class="font-mono text-[11px] text-neutral-500">
+                    {Math.round(spike.ratio)}× the nearby years
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {/* ── Share + next steps ─────────────────────────────────────────── */}
+    {
+      hasHistory && (
+        <div class="mb-14">
+          <ShareButtons
+            url={shareUrl}
+            text={`${name}'s website history, ${spanLabel}:`}
+          />
+        </div>
+      )
+    }
+
+    <section class="max-w-3xl">
+      <h2
+        class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+      >
         Build another timeline
       </h2>
       <SearchForm domain={domain} compact />

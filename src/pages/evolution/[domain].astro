@@ -1,0 +1,218 @@
+---
+/**
+ * GET /evolution/[domain] — watch a website transform across its history.
+ *
+ * The third of the site's three flagship experiences (timeline / compare /
+ * evolution). The page itself only needs the archive overview, which is a
+ * single sub-second call; the player resolves the individual snapshots for
+ * itself through /api/evolution so nothing here blocks on a fan-out.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import EvolutionPlayer from '@components/EvolutionPlayer.astro';
+import HistoryTimeline from '@components/HistoryTimeline.astro';
+import ShareButtons from '@components/ShareButtons.astro';
+import SearchForm from '@components/SearchForm.astro';
+import { getArchiveOverview } from '@services/archive-overview';
+import {
+  slugToDomain,
+  isValidDomain,
+  domainDisplayName,
+  domainToSlug,
+} from '@utils/domain';
+import {
+  buildFrames,
+  computeStats,
+  detectArchivingSpikes,
+  formatCount,
+} from '@lib/history';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { SITE } from '@lib/constants';
+
+export const prerender = false;
+
+/**
+ * Frames in a playback. Each one costs an upstream lookup when the sequence is
+ * first assembled, so this is lower than the timeline's marker count — 16 is
+ * enough to read as an evolution without a 30-request fan-out.
+ */
+const FRAME_COUNT = 16;
+
+const domain = slugToDomain(Astro.params.domain ?? '');
+
+if (!isValidDomain(domain)) {
+  return Astro.redirect('/?error=invalid-domain', 302);
+}
+
+const name = domainDisplayName(domain);
+const slug = domainToSlug(domain);
+
+const overview = await getArchiveOverview(domain);
+const stats = computeStats(overview);
+const frames = buildFrames(overview, FRAME_COUNT);
+const spikeYears = detectArchivingSpikes(overview).map((s) => s.year);
+
+const hasHistory = overview.status === 'ok' && frames.length >= 2;
+
+Astro.response.headers.set(
+  'Cache-Control',
+  hasHistory
+    ? 'public, s-maxage=86400, stale-while-revalidate=604800'
+    : 'public, s-maxage=300, stale-while-revalidate=600'
+);
+
+const spanLabel = hasHistory ? `${stats.firstYear} to ${stats.lastYear}` : '';
+const yearSequence = frames.map((f) => f.year).join(' → ');
+
+const title = hasHistory
+  ? `${name} Website Evolution — Watch ${domain} Change from ${stats.firstYear} to ${stats.lastYear}`
+  : `${name} Website Evolution`;
+
+const description = hasHistory
+  ? `Play ${name}'s website evolution and watch ${domain} transform from ${spanLabel}. ${frames.length} archived Wayback Machine snapshots, played back in sequence with speed, step and share controls.`
+  : `We could not assemble a website evolution for ${domain}. ${overview.message ?? ''}`.trim();
+
+const canonicalPath = `/evolution/${slug}`;
+const shareUrl = new URL(canonicalPath, SITE.url).href;
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: `${name} history`, path: `/timeline/${slug}` },
+  { name: `${name} evolution`, path: canonicalPath },
+]);
+
+const videoLikeJsonLd = hasHistory
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: `${name} website evolution, ${spanLabel}`,
+      description: `Archived snapshots of ${domain} played back in chronological order.`,
+      numberOfItems: frames.length,
+      itemListElement: frames.map((frame, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: `${name} in ${frame.label}`,
+        url: new URL(`/site/${slug}/${frame.date}`, SITE.url).href,
+      })),
+    }
+  : null;
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  noindex={!hasHistory}
+  jsonLd={videoLikeJsonLd ? [breadcrumb, videoLikeJsonLd] : breadcrumb}
+>
+  <div class="container-page py-10">
+    <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
+      <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >Home</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <a
+        href={`/timeline/${slug}`}
+        class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >{name} timeline</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <span class="text-neutral-700 dark:text-neutral-300">Evolution</span>
+    </nav>
+
+    <header class="mb-8 max-w-3xl">
+      <p class="eyebrow">Website evolution</p>
+      <h1
+        class="mt-2 text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        Watch {name} evolve
+      </h1>
+      {
+        hasHistory ? (
+          <>
+            <p class="mt-3 text-neutral-600 dark:text-neutral-400">
+              {frames.length} archived snapshots of{' '}
+              <strong class="font-medium">{domain}</strong>, played in order
+              from {spanLabel} — drawn from {formatCount(stats.totalCaptures)}{' '}
+              captures held by the Internet Archive.
+            </p>
+            <p class="mt-2 font-mono text-xs break-words text-neutral-500">
+              {yearSequence}
+            </p>
+          </>
+        ) : (
+          <p class="mt-3 text-neutral-600 dark:text-neutral-400">
+            {overview.message ??
+              `We need at least two archived snapshots to build an evolution, and we could not find them for ${domain}.`}
+          </p>
+        )
+      }
+    </header>
+
+    {
+      hasHistory ? (
+        <>
+          <EvolutionPlayer
+            domain={domain}
+            name={name}
+            frames={frames}
+            frameCount={FRAME_COUNT}
+          />
+
+          <div class="mt-14">
+            <h2 class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              The full archive timeline
+            </h2>
+            <HistoryTimeline
+              overview={overview}
+              frames={buildFrames(overview, 24)}
+              spikeYears={spikeYears}
+            />
+          </div>
+
+          <div class="mt-10 flex flex-wrap items-center justify-between gap-4">
+            <ShareButtons
+              url={shareUrl}
+              text={`Watch ${name} evolve from ${spanLabel}:`}
+            />
+            <div class="flex flex-wrap gap-3">
+              <a
+                href={`/compare/${slug}/${stats.firstArchivedDate}/${stats.lastArchivedDate}`}
+                class="btn-secondary"
+              >
+                ⇄ Compare first vs latest
+              </a>
+              <a href={`/timeline/${slug}`} class="btn-secondary">
+                📅 Full timeline
+              </a>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div class="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-10 text-center dark:border-neutral-700 dark:bg-neutral-900/40">
+          <span class="text-4xl" aria-hidden="true">
+            {overview.status === 'blocked' ? '🚫' : '🎞️'}
+          </span>
+          <p class="mt-4 font-medium text-neutral-800 dark:text-neutral-200">
+            No evolution available for {domain}
+          </p>
+          <p class="mx-auto mt-1 max-w-md text-sm text-neutral-500">
+            {overview.status === 'blocked'
+              ? 'This website has been excluded from the Wayback Machine, so there are no snapshots to play back.'
+              : 'Try a website with a longer archived history — most well-known sites have captures going back to the late 1990s.'}
+          </p>
+          <a href="/collections" class="btn-primary mt-6">
+            Browse websites with rich histories
+          </a>
+        </div>
+      )
+    }
+
+    <section class="mt-16 max-w-3xl">
+      <h2
+        class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+      >
+        Play another website's evolution
+      </h2>
+      <SearchForm domain={domain} compact />
+    </section>
+  </div>
+</BaseLayout>

@@ -6,6 +6,37 @@ export const fr: PageContent = {
     metaTitle:
       "Visionneuse d'historique de sites web – Consultez gratuitement l'historique de n'importe quel site",
     recentHeading: 'Consultés récemment',
+    modes: {
+      eyebrow: 'Comment ça marche',
+      heading: 'Trois façons de remonter le temps d’un site web',
+      sub: 'Voyez l’histoire, voyez ce qui a changé, puis regardez-le se produire.',
+      items: [
+        {
+          emoji: '📅',
+          title: 'Chronologie',
+          body: 'Chaque année où Internet Archive a capturé le site, sur un axe interactif — les lacunes restent visibles.',
+          cta: 'Créer une chronologie →',
+          href: '/timeline/google.com',
+        },
+        {
+          emoji: '⇄',
+          title: 'Comparer',
+          body: 'Placez deux dates côte à côte, ou faites glisser le curseur avant/après pour voir exactement ce qui a bougé.',
+          cta: 'Comparer deux dates →',
+          href: '/compare',
+        },
+        {
+          emoji: '▶',
+          title: 'Évolution',
+          body: 'Lisez les captures dans l’ordre et regardez un site se transformer décennie après décennie.',
+          cta: 'Lancer une évolution →',
+          href: '/evolution/google.com',
+        },
+      ],
+      collectionsCta: 'Parcourir les collections',
+      onThisDayCta: 'Un jour comme aujourd’hui',
+      randomCta: 'Site aléatoire',
+    },
     examples: {
       eyebrow: 'Exemples',
       heading: 'Exemples populaires',
@@ -120,7 +151,8 @@ export const fr: PageContent = {
           "Pour consulter l'historique d'un site web, saisissez un domaine et choisissez une date. Le vérificateur d'historique de sites web identifie la capture archivée la plus proche et l'affiche à l'écran. Vous pouvez avancer ou reculer au fil des années pour consulter l'historique d'un site web tout au long de son existence.",
       },
       {
-        question: 'Comment consulter l’historique des modifications d’un site web ?',
+        question:
+          'Comment consulter l’historique des modifications d’un site web ?',
         answer:
           "Pour consulter l'historique des modifications d'un site web, ouvrez la chronologie du site afin de visualiser les captures année par année, ou utilisez la vue de comparaison côte à côte pour placer deux dates l'une à côté de l'autre. Les changements de design, les refontes et les changements d'image deviennent ainsi faciles à repérer en un coup d'œil.",
       },
@@ -170,7 +202,8 @@ export const fr: PageContent = {
           "Pour voir l'historique d'un site web sur iPhone, ouvrez Safari, touchez l'icône du livre, puis l'onglet de l'horloge pour consulter votre historique de navigation. Pour rechercher l'historique public d'un site web lui-même, ouvrez cette visionneuse d'historique de sites web dans Safari sur votre iPhone et recherchez n'importe quel domaine — cela fonctionne sur les appareils Apple sans aucune application requise.",
       },
       {
-        question: 'Comment voir l’historique du site web d’Apple ou de Google ?',
+        question:
+          'Comment voir l’historique du site web d’Apple ou de Google ?',
         answer:
           "Recherchez « apple.com » ou « google.com » dans la barre de recherche d'historique de sites web et choisissez une année. Vous pouvez voir l'historique du site web d'Apple jusqu'à l'ère des iMac aux couleurs acidulées et explorer l'historique du site web de Google depuis sa sobre page d'accueil de 1998.",
       },
@@ -185,7 +218,8 @@ export const fr: PageContent = {
           "Oui. La vue de comparaison place deux dates côte à côte afin que vous puissiez consulter instantanément l'historique des modifications d'un site web — parfait pour voir une refonte « avant vs. maintenant » ou confirmer quand une marque a rafraîchi son apparence.",
       },
       {
-        question: 'Le vérificateur d’historique de sites web fonctionne-t-il sur Android, Mac et PC ?',
+        question:
+          'Le vérificateur d’historique de sites web fonctionne-t-il sur Android, Mac et PC ?',
         answer:
           "Oui. La visionneuse d'historique de sites web est entièrement adaptative et fonctionne dans n'importe quel navigateur moderne, vous pouvez donc consulter l'historique d'un site web sur Android, iPhone, iPad, Mac et PC Windows sans rien installer.",
       },
@@ -307,7 +341,8 @@ export const fr: PageContent = {
       </div>`,
   },
   histories: {
-    metaTitle: 'Historiques de sites web : évolutions du design des sites emblématiques',
+    metaTitle:
+      'Historiques de sites web : évolutions du design des sites emblématiques',
     metaDescription:
       "Explorez l'évolution du design des sites web les plus emblématiques du web — Google, YouTube, Facebook, Amazon, Reddit et plus encore — avec des captures d'écran archivées et des chronologies.",
     heading: 'Historiques de sites web',
@@ -418,7 +453,7 @@ export const fr: PageContent = {
   terms: {
     metaTitle: 'Conditions générales',
     metaDescription:
-      "Les conditions générales régissant votre utilisation de Website History Viewer.",
+      'Les conditions générales régissant votre utilisation de Website History Viewer.',
     eyebrow: 'Mentions légales',
     heading: 'Conditions & Mentions',
     lastUpdatedLabel: 'Dernière mise à jour :',

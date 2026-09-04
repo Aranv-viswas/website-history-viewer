@@ -60,17 +60,19 @@ const networks = [
 </div>
 
 <script>
-  document.querySelectorAll<HTMLButtonElement>('[data-copy-url]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const url = btn.getAttribute('data-copy-url') ?? location.href;
-      const label = btn.querySelector('.copy-label');
-      try {
-        await navigator.clipboard.writeText(url);
-        if (label) label.textContent = 'Copied!';
-        setTimeout(() => label && (label.textContent = 'Copy link'), 1800);
-      } catch {
-        if (label) label.textContent = 'Press Ctrl+C';
-      }
+  document
+    .querySelectorAll<HTMLButtonElement>('[data-copy-url]')
+    .forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-copy-url') ?? location.href;
+        const label = btn.querySelector('.copy-label');
+        try {
+          await navigator.clipboard.writeText(url);
+          if (label) label.textContent = 'Copied!';
+          setTimeout(() => label && (label.textContent = 'Copy link'), 1800);
+        } catch {
+          if (label) label.textContent = 'Press Ctrl+C';
+        }
+      });
     });
-  });
 </script>
