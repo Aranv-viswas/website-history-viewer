@@ -48,8 +48,10 @@ const FAQS = c.home.faq;
   <section
     class="relative overflow-hidden border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
   >
-    {/* The brand's signature mesh gradient — its only decorative chrome, at
-        hero scale, occupying the top of the band and fading into canvas. */}
+    {
+      /* The brand's signature mesh gradient — its only decorative chrome, at
+        hero scale, occupying the top of the band and fading into canvas. */
+    }
     <div
       class="mesh-gradient pointer-events-none absolute inset-x-0 top-0 -z-0 h-[70%] opacity-70"
       aria-hidden="true"
@@ -91,7 +93,9 @@ const FAQS = c.home.faq;
         {
           POPULAR_SITES.slice(0, 5).map((site) => (
             <a
-              href={L(`/site/${domainToSlug(site.domain)}/${yearToISO(site.year)}`)}
+              href={L(
+                `/site/${domainToSlug(site.domain)}/${yearToISO(site.year)}`
+              )}
               class="rounded-full border border-neutral-200 bg-white px-3 py-1 font-medium text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
             >
               {site.name} {site.year}
@@ -102,12 +106,72 @@ const FAQS = c.home.faq;
     </div>
   </section>
 
+  {/* ---------------- Three ways to explore ---------------- */}
+  <section
+    class="border-b border-neutral-200 bg-white py-16 dark:border-neutral-800 dark:bg-neutral-950"
+    aria-labelledby="modes-heading"
+  >
+    <div class="container-page">
+      <div class="mb-10 text-center">
+        <p class="eyebrow">{c.home.modes.eyebrow}</p>
+        <h2
+          id="modes-heading"
+          class="mt-3 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"
+        >
+          {c.home.modes.heading}
+        </h2>
+        <p class="mt-3 text-neutral-600 dark:text-neutral-400">
+          {c.home.modes.sub}
+        </p>
+      </div>
+
+      <div class="grid gap-5 md:grid-cols-3">
+        {
+          c.home.modes.items.map((mode) => (
+            <a
+              href={L(mode.href)}
+              class="card group flex flex-col p-6 transition hover:border-neutral-300 hover:shadow-card-hover dark:hover:border-neutral-700"
+            >
+              <span class="text-3xl" aria-hidden="true">
+                {mode.emoji}
+              </span>
+              <h3 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                {mode.title}
+              </h3>
+              <p class="mt-1.5 flex-1 text-sm text-neutral-600 dark:text-neutral-400">
+                {mode.body}
+              </p>
+              <span class="mt-4 text-sm font-medium text-brand-600 group-hover:underline dark:text-brand-400">
+                {mode.cta}
+              </span>
+            </a>
+          ))
+        }
+      </div>
+
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <a href={L('/collections')} class="btn-secondary">
+          📚 {c.home.modes.collectionsCta}
+        </a>
+        <a href={L('/on-this-day')} class="btn-secondary">
+          📅 {c.home.modes.onThisDayCta}
+        </a>
+        <a href="/random" class="btn-secondary">
+          🎲 {c.home.modes.randomCta}
+        </a>
+      </div>
+    </div>
+  </section>
+
   {/* ---------------- Recently viewed (client-populated) ---------------- */}
   <section id="recent" class="container-page hidden py-12">
-    <h2 class="mb-5 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+    <h2
+      class="mb-5 text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+    >
       {c.home.recentHeading}
     </h2>
-    <div id="recent-list" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"></div>
+    <div id="recent-list" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    </div>
   </section>
 
   {/* ---------------- Popular examples ---------------- */}
@@ -129,7 +193,9 @@ const FAQS = c.home.faq;
   </section>
 
   {/* ---------------- Popular comparisons ---------------- */}
-  <section class="border-y border-neutral-200 bg-white py-20 dark:border-neutral-800 dark:bg-neutral-950">
+  <section
+    class="border-y border-neutral-200 bg-white py-20 dark:border-neutral-800 dark:bg-neutral-950"
+  >
     <div class="container-page">
       <div class="mb-10 text-center">
         <p class="eyebrow">{c.home.comparisons.eyebrow}</p>
@@ -146,7 +212,9 @@ const FAQS = c.home.faq;
         {
           POPULAR_COMPARISONS.map((c) => (
             <a
-              href={L(`/compare?domain=${encodeURIComponent(c.domain)}&a=${yearToISO(c.yearA)}&b=${today}`)}
+              href={L(
+                `/compare/${domainToSlug(c.domain)}/${yearToISO(c.yearA)}/${today}`
+              )}
               class="card flex items-center justify-between gap-3 p-5 transition hover:border-neutral-300 hover:shadow-card-hover dark:hover:border-neutral-700"
             >
               <div>
@@ -157,7 +225,10 @@ const FAQS = c.home.faq;
                   {c.yearA} <span aria-hidden="true">vs</span> {year}
                 </p>
               </div>
-              <span class="text-brand-600 dark:text-brand-400" aria-hidden="true">
+              <span
+                class="text-brand-600 dark:text-brand-400"
+                aria-hidden="true"
+              >
                 ⇄
               </span>
             </a>
@@ -167,7 +238,9 @@ const FAQS = c.home.faq;
     </div>
   </section>
 
-  {/* ---------------- Trending websites / featured histories ---------------- */}
+  {
+    /* ---------------- Trending websites / featured histories ---------------- */
+  }
   <section class="container-page py-20">
     <div class="mb-10 text-center">
       <p class="eyebrow">{c.home.trending.eyebrow}</p>
@@ -244,8 +317,7 @@ const FAQS = c.home.faq;
     <div
       class="prose-seo mx-auto max-w-3xl text-neutral-700 dark:text-neutral-300"
       set:html={c.home.longformHtml}
-    >
-    </div>
+    />
   </section>
 
   {/* ---------------- FAQ (rich-result eligible) ---------------- */}

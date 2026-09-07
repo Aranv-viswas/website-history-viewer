@@ -1,0 +1,278 @@
+---
+/**
+ * ChangeAnalysis — "what changed" between the two captures on a comparison page.
+ *
+ * Loads after render from /api/changes, because the analysis costs two archived
+ * page fetches and the comparison itself must not wait on it.
+ *
+ * The honesty requirement drives the design here. The panel is headed with what
+ * the method actually is, the verdict wording is hedged, and the caveat is
+ * rendered in the interface rather than buried — a confident "82/100 Heavily
+ * rebuilt" badge earns more trust than a markup comparison deserves unless the
+ * limits are shown next to it.
+ */
+interface Props {
+  domain: string;
+  dateA: string;
+  dateB: string;
+  labelA: string;
+  labelB: string;
+}
+
+const { domain, dateA, dateB, labelA, labelB } = Astro.props;
+---
+
+<section
+  data-changes
+  data-domain={domain}
+  data-a={dateA}
+  data-b={dateB}
+  aria-labelledby="changes-heading"
+  class="mt-12"
+>
+  <h2
+    id="changes-heading"
+    class="mb-2 text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+  >
+    What changed between {labelA} and {labelB}
+  </h2>
+  <p class="mb-5 max-w-2xl text-sm text-neutral-600 dark:text-neutral-400">
+    A comparison of the two captures' <strong>HTML source</strong> — layout technique,
+    navigation, structure, declared colours and logo image. It does not compare screenshots,
+    so a change made purely in a stylesheet will not appear here.
+  </p>
+
+  {/* Loading / failure state. */}
+  <div
+    data-changes-status
+    role="status"
+    class="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900"
+  >
+    <div
+      data-changes-spinner
+      class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-neutral-300 border-t-brand-600 dark:border-neutral-700 dark:border-t-brand-400"
+    >
+    </div>
+    <p data-changes-text class="text-sm text-neutral-600 dark:text-neutral-400">
+      Reading both archived pages…
+    </p>
+  </div>
+
+  {/* Result, revealed by the client. */}
+  <div data-changes-result class="hidden"></div>
+</section>
+
+<script>
+  /**
+   * Fetches and renders the markup comparison for one comparison page.
+   */
+  interface ColorSample {
+    hex: string;
+    weight: number;
+  }
+
+  interface Side {
+    date: string;
+    title: string | null;
+    colors: ColorSample[];
+    logo: { url: string; alt: string | null } | null;
+    usesTableLayout: boolean;
+    usesFlash: boolean;
+    isResponsive: boolean;
+    bytes: number;
+  }
+
+  interface ChangesPayload {
+    status: string;
+    message: string | null;
+    failed?: 'a' | 'b' | 'both';
+    score: number | null;
+    verdict?: string;
+    verdictDetail?: string;
+    changes: Array<{
+      kind: string;
+      weight: number;
+      summary: string;
+      detail: string;
+    }>;
+    a?: Side;
+    b?: Side;
+  }
+
+  /** An icon per change kind — quick to scan, decorative only. */
+  const KIND_ICON: Record<string, string> = {
+    layout: '🧱',
+    structure: '🏗️',
+    navigation: '🧭',
+    logo: '🖼️',
+    color: '🎨',
+    media: '🎬',
+    mobile: '📱',
+    size: '📦',
+    content: '📝',
+  };
+
+  function initChanges(root: HTMLElement) {
+    const status = root.querySelector<HTMLElement>('[data-changes-status]');
+    const spinner = root.querySelector<HTMLElement>('[data-changes-spinner]');
+    const text = root.querySelector<HTMLElement>('[data-changes-text]');
+    const result = root.querySelector<HTMLElement>('[data-changes-result]');
+    if (!result) return;
+
+    const esc = (s: string) =>
+      s.replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+          })[c] ?? c
+      );
+
+    function fail(message: string) {
+      spinner?.classList.add('hidden');
+      if (text) text.textContent = message;
+    }
+
+    /** The colour strip and era facts for one side of the comparison. */
+    function sideCard(side: Side, label: string): string {
+      const swatches = side.colors.length
+        ? side.colors
+            .map(
+              (c) =>
+                `<span title="${esc(c.hex)}" class="h-6 w-6 rounded border border-black/10 dark:border-white/15" style="background:${esc(c.hex)}"></span>`
+            )
+            .join('')
+        : '<span class="text-xs text-neutral-400">No colours declared in the markup</span>';
+
+      const facts = [
+        side.usesTableLayout ? 'Table layout' : 'CSS layout',
+        side.usesFlash ? 'Uses Flash' : null,
+        side.isResponsive ? 'Mobile-ready' : 'Not mobile-ready',
+        `${Math.max(1, Math.round(side.bytes / 1024))} KB of HTML`,
+      ].filter(Boolean) as string[];
+
+      return `
+        <div class="card p-4">
+          <p class="font-mono text-xs font-medium text-neutral-500">${esc(label)}</p>
+          ${
+            side.title
+              ? `<p class="mt-1 truncate text-sm font-medium text-neutral-900 dark:text-neutral-100" title="${esc(side.title)}">${esc(side.title)}</p>`
+              : ''
+          }
+          <div class="mt-3 flex flex-wrap gap-1.5">${swatches}</div>
+          <ul class="mt-3 flex flex-wrap gap-1.5">
+            ${facts
+              .map(
+                (f) =>
+                  `<li class="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">${esc(f)}</li>`
+              )
+              .join('')}
+          </ul>
+        </div>`;
+    }
+
+    function render(data: ChangesPayload) {
+      if (data.status !== 'ok' || data.score === null || !data.a || !data.b) {
+        const which =
+          data.failed === 'both'
+            ? 'Neither archived page could be read'
+            : data.failed === 'a'
+              ? 'The earlier archived page could not be read'
+              : data.failed === 'b'
+                ? 'The later archived page could not be read'
+                : 'The comparison could not be completed';
+        fail(`${which}. ${data.message ?? ''}`.trim());
+        return;
+      }
+
+      const changesHtml = data.changes.length
+        ? data.changes
+            .map(
+              (c) => `
+          <li class="flex gap-3 border-b border-neutral-100 py-3 last:border-0 dark:border-neutral-800/60">
+            <span class="text-lg leading-none" aria-hidden="true">${KIND_ICON[c.kind] ?? '•'}</span>
+            <div>
+              <p class="text-sm font-medium text-neutral-900 dark:text-neutral-100">${esc(c.summary)}</p>
+              <p class="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">${esc(c.detail)}</p>
+            </div>
+          </li>`
+            )
+            .join('')
+        : `<li class="py-3 text-sm text-neutral-600 dark:text-neutral-400">
+             No notable structural differences were found between these two captures.
+           </li>`;
+
+      result!.innerHTML = `
+        <div class="card p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-brand-500/25 font-mono text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              ${data.score}
+            </div>
+            <div class="min-w-[12rem] flex-1">
+              <p class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">${esc(data.verdict ?? '')}</p>
+              <p class="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">${esc(data.verdictDetail ?? '')}</p>
+            </div>
+          </div>
+
+          <ul class="mt-5 border-t border-neutral-100 dark:border-neutral-800/60">
+            ${changesHtml}
+          </ul>
+
+          <div class="mt-5 grid gap-3 sm:grid-cols-2">
+            ${sideCard(data.a, data.a.date)}
+            ${sideCard(data.b, data.b.date)}
+          </div>
+
+          <p class="mt-4 text-xs text-neutral-500">
+            Score is a markup-distance measure from 0 to 100, not a visual
+            difference. It is a strong hint that a page was rebuilt, not proof
+            of one — and it cannot see a redesign done entirely in CSS.
+          </p>
+        </div>`;
+
+      status?.classList.add('hidden');
+      result!.classList.remove('hidden');
+    }
+
+    async function load() {
+      const params = new URLSearchParams({
+        url: root.dataset.domain ?? '',
+        a: root.dataset.a ?? '',
+        b: root.dataset.b ?? '',
+      });
+      try {
+        const res = await fetch(`/api/changes?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        render((await res.json()) as ChangesPayload);
+      } catch {
+        fail(
+          'We could not read the archived pages to compare them. The Internet Archive may be busy — reload to try again.'
+        );
+      }
+    }
+
+    /* Only start once the panel is near the viewport: it's supplementary to the
+       comparison above it, and shouldn't compete with the snapshots for
+       bandwidth while those are still loading. */
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            observer.disconnect();
+            void load();
+          }
+        },
+        { rootMargin: '200px' }
+      );
+      observer.observe(root);
+    } else {
+      void load();
+    }
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-changes]').forEach(initChanges);
+</script>

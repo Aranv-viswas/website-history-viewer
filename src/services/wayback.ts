@@ -39,11 +39,7 @@ const MAX_CONCURRENCY = 5;
 const USER_AGENT =
   'WebsiteHistoryViewer/1.0 (+https://websitehistoryviewer.com)';
 
-function notAvailable(
-  domain: string,
-  date: string,
-  message: string
-): Snapshot {
+function notAvailable(domain: string, date: string, message: string): Snapshot {
   return {
     domain,
     requestedDate: date,
@@ -76,65 +72,69 @@ export async function getSnapshot(
   const timestamp = toWaybackTimestamp(date);
   const cacheKey = `snapshot:${host}:${timestamp}`;
 
-  return cached<Snapshot>(cacheKey, async () => {
-    const url = `${AVAILABILITY_ENDPOINT}?url=${encodeURIComponent(
-      host
-    )}&timestamp=${timestamp}`;
+  return cached<Snapshot>(
+    cacheKey,
+    async () => {
+      const url = `${AVAILABILITY_ENDPOINT}?url=${encodeURIComponent(
+        host
+      )}&timestamp=${timestamp}`;
 
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
+      try {
+        const res = await fetch(url, {
+          headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
 
-      if (res.status === 429) {
+        if (res.status === 429) {
+          return notAvailable(
+            host,
+            requestedDate,
+            'The Internet Archive is rate-limiting requests right now. Please try again in a moment.'
+          );
+        }
+
+        if (!res.ok) {
+          return notAvailable(
+            host,
+            requestedDate,
+            `The Wayback Machine returned an error (HTTP ${res.status}).`
+          );
+        }
+
+        const data = (await res.json()) as WaybackAvailabilityResponse;
+        const closest = data?.archived_snapshots?.closest;
+
+        if (!closest || !closest.available || !closest.url) {
+          return notAvailable(
+            host,
+            requestedDate,
+            `No archived snapshot was found for ${host} around that date. Try an earlier or later date.`
+          );
+        }
+
+        return {
+          domain: host,
+          requestedDate,
+          available: true,
+          // Force https so embedded previews don't trip mixed-content blocks.
+          archivedUrl: closest.url.replace(/^http:\/\//, 'https://'),
+          timestamp: closest.timestamp,
+          capturedAt: waybackTimestampToISO(closest.timestamp),
+          status: closest.status ?? null,
+        };
+      } catch (err) {
+        const aborted = err instanceof Error && err.name === 'TimeoutError';
         return notAvailable(
           host,
           requestedDate,
-          'The Internet Archive is rate-limiting requests right now. Please try again in a moment.'
+          aborted
+            ? 'The request to the Internet Archive timed out. Please try again.'
+            : 'We could not reach the Internet Archive. Please try again shortly.'
         );
       }
-
-      if (!res.ok) {
-        return notAvailable(
-          host,
-          requestedDate,
-          `The Wayback Machine returned an error (HTTP ${res.status}).`
-        );
-      }
-
-      const data = (await res.json()) as WaybackAvailabilityResponse;
-      const closest = data?.archived_snapshots?.closest;
-
-      if (!closest || !closest.available || !closest.url) {
-        return notAvailable(
-          host,
-          requestedDate,
-          `No archived snapshot was found for ${host} around that date. Try an earlier or later date.`
-        );
-      }
-
-      return {
-        domain: host,
-        requestedDate,
-        available: true,
-        // Force https so embedded previews don't trip mixed-content blocks.
-        archivedUrl: closest.url.replace(/^http:\/\//, 'https://'),
-        timestamp: closest.timestamp,
-        capturedAt: waybackTimestampToISO(closest.timestamp),
-        status: closest.status ?? null,
-      };
-    } catch (err) {
-      const aborted = err instanceof Error && err.name === 'TimeoutError';
-      return notAvailable(
-        host,
-        requestedDate,
-        aborted
-          ? 'The request to the Internet Archive timed out. Please try again.'
-          : 'We could not reach the Internet Archive. Please try again shortly.'
-      );
-    }
-  }, (snap) => (snap.available ? SUCCESS_TTL_MS : FAILURE_TTL_MS));
+    },
+    (snap) => (snap.available ? SUCCESS_TTL_MS : FAILURE_TTL_MS)
+  );
 }
 
 /** Convenience: the most recent ("today") snapshot for a domain. */

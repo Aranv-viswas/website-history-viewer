@@ -42,7 +42,11 @@ export function cacheGet<T>(key: string): T | undefined {
 }
 
 /** Write a value with an optional TTL. */
-export function cacheSet<T>(key: string, value: T, ttlMs = DEFAULT_TTL_MS): void {
+export function cacheSet<T>(
+  key: string,
+  value: T,
+  ttlMs = DEFAULT_TTL_MS
+): void {
   store.set(key, { value, expiresAt: Date.now() + ttlMs });
 }
 
@@ -84,4 +88,49 @@ export function cacheInvalidatePrefix(prefix: string): number {
 /** Clear the entire cache (useful for tests / manual invalidation). */
 export function cacheClear(): void {
   store.clear();
+  // Also drop in-flight producers (declared below) so a cleared cache really is
+  // a clean slate — otherwise a test could still be served a pending promise.
+  inFlight.clear();
+}
+
+/**
+ * In-flight request de-duplication.
+ *
+ * `cached()` only populates the store once a producer *resolves*, so N
+ * concurrent misses for the same key all run the producer. That's harmless for
+ * the availability API (fast) but expensive for the capture index, where a
+ * single upstream call can take 20+ seconds — a burst of requests would fan out
+ * into a burst of slow upstream calls and trip the Archive's rate limiter.
+ *
+ * `dedupe()` adds a promise map in front of the cache: the first caller runs
+ * the producer, every concurrent caller for the same key awaits that same
+ * promise. The entry is removed as soon as it settles, so a rejection doesn't
+ * poison later attempts.
+ */
+const inFlight = new Map<string, Promise<unknown>>();
+
+export async function dedupe<T>(
+  key: string,
+  produce: () => Promise<T>,
+  ttlMs: Ttl<T> = DEFAULT_TTL_MS
+): Promise<T> {
+  const hit = cacheGet<T>(key);
+  if (hit !== undefined) return hit;
+
+  const pending = inFlight.get(key) as Promise<T> | undefined;
+  if (pending) return pending;
+
+  const promise = (async () => {
+    const value = await produce();
+    cacheSet(key, value, resolveTtl(ttlMs, value));
+    return value;
+  })().finally(() => inFlight.delete(key));
+
+  inFlight.set(key, promise);
+  return promise;
+}
+
+/** Number of producers currently running (tests/diagnostics). */
+export function inFlightCount(): number {
+  return inFlight.size;
 }

@@ -33,6 +33,20 @@ export interface PageContent {
   home: {
     metaTitle: string;
     recentHeading: string;
+    /** The three flagship experiences promoted under the hero. */
+    modes: SectionHeading & {
+      items: Array<{
+        emoji: string;
+        title: string;
+        body: string;
+        cta: string;
+        /** Internal path; localized at render time. */
+        href: string;
+      }>;
+      collectionsCta: string;
+      onThisDayCta: string;
+      randomCta: string;
+    };
     examples: SectionHeading;
     comparisons: SectionHeading;
     trending: SectionHeading;
@@ -101,8 +115,40 @@ export interface PageContent {
 
 const en: PageContent = {
   home: {
-    metaTitle: "Website History Viewer – Check & See Any Website's History Free",
+    metaTitle:
+      "Website History Viewer – Check & See Any Website's History Free",
     recentHeading: 'Recently viewed',
+    modes: {
+      eyebrow: 'How it works',
+      heading: 'Three ways to travel through a website’s past',
+      sub: 'See the history, see what changed, then watch it happen.',
+      items: [
+        {
+          emoji: '📅',
+          title: 'Timeline',
+          body: 'Every year the Internet Archive captured the site, on one interactive axis — with the gaps left visible.',
+          cta: 'Build a timeline →',
+          href: '/timeline/google.com',
+        },
+        {
+          emoji: '⇄',
+          title: 'Compare',
+          body: 'Put two dates side by side, or drag a before/after slider between them to see exactly what moved.',
+          cta: 'Compare two dates →',
+          href: '/compare',
+        },
+        {
+          emoji: '▶',
+          title: 'Evolution',
+          body: 'Play the snapshots back in order and watch a website transform decade by decade.',
+          cta: 'Play an evolution →',
+          href: '/evolution/google.com',
+        },
+      ],
+      collectionsCta: 'Browse collections',
+      onThisDayCta: 'On this day',
+      randomCta: 'Random website',
+    },
     examples: {
       eyebrow: 'Examples',
       heading: 'Popular examples',
@@ -282,7 +328,8 @@ const en: PageContent = {
           'Yes. The compare view places any two dates side by side so you can check website changes history instantly — perfect for seeing a “then vs. now” redesign or confirming when a brand refreshed its look.',
       },
       {
-        question: 'Does the website history checker work on Android, Mac and PC?',
+        question:
+          'Does the website history checker work on Android, Mac and PC?',
         answer:
           'Yes. The website history viewer is fully responsive and runs in any modern browser, so you can check website history on Android, iPhone, iPad, Mac and Windows PC with nothing to install.',
       },
@@ -609,7 +656,9 @@ const content: Partial<Record<Lang, PageContent>> = {
 
 /** Replace `{{name}}` / `{{email}}` tokens in a content string with SITE values. */
 export function fillTokens(html: string): string {
-  return html.replaceAll('{{name}}', SITE.name).replaceAll('{{email}}', SITE.email);
+  return html
+    .replaceAll('{{name}}', SITE.name)
+    .replaceAll('{{email}}', SITE.email);
 }
 
 /** The page content for a locale, falling back to English as a whole object. */

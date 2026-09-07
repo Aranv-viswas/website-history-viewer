@@ -182,3 +182,63 @@ describe('getAlternateLinks', () => {
     expect(fr?.href).toBe('https://example.com/fr/about/');
   });
 });
+
+describe('route classification matches prerender status', () => {
+  /**
+   * `routePath` emits a trailing slash for prerendered pages (Astro writes them
+   * as <path>/index.html, and Cloudflare 307-redirects the slash-less form) and
+   * no slash for on-demand routes the Worker matches directly. Getting a route
+   * on the wrong side makes every canonical tag, hreflang alternate and sitemap
+   * entry for it a redirect, which is what files pages under "Page with
+   * redirect" in Search Console instead of indexing them.
+   */
+  const ON_DEMAND = [
+    '/compare',
+    '/compare/google.com/2000-01-01/2020-01-01',
+    '/timeline/google.com',
+    '/evolution/google.com',
+    '/site/google.com/2005-01-01',
+    '/search',
+    '/on-this-day',
+    '/random',
+    '/api/history',
+  ];
+
+  const PRERENDERED = [
+    '/',
+    '/about',
+    '/compare-nothing-like-the-tool-route',
+    '/explore',
+    '/collections',
+    '/collection/early-internet',
+    '/google-history',
+  ];
+
+  it.each(ON_DEMAND)(
+    '%s is on-demand: no trailing slash, no locale',
+    (path) => {
+      expect(isLocalizable(path)).toBe(false);
+      expect(routePath(path).endsWith('/')).toBe(false);
+      // `localizeHref` is the link builder and must leave tool routes alone.
+      // (`localizePath` force-prefixes by design and is not the one to use here.)
+      expect(localizeHref(path, 'de')).not.toContain('/de/');
+    }
+  );
+
+  it.each(PRERENDERED)(
+    '%s is prerendered: trailing slash + locales',
+    (path) => {
+      expect(isLocalizable(path)).toBe(true);
+      expect(routePath(path).endsWith('/')).toBe(true);
+      expect(localizePath(path, 'de').startsWith('/de')).toBe(true);
+      expect(localizeHref(path, 'de').startsWith('/de')).toBe(true);
+    }
+  );
+
+  it('keeps query strings and fragments intact either way', () => {
+    expect(routePath('/on-this-day?month=12&day=25')).toBe(
+      '/on-this-day?month=12&day=25'
+    );
+    expect(routePath('/collections#top')).toBe('/collections/#top');
+  });
+});

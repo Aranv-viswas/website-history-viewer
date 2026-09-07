@@ -36,8 +36,7 @@ export function isValidDomain(input: string): boolean {
   const domain = normalizeDomain(input);
   if (!domain || domain.length > 253) return false;
   // label.label(.label)+ — each label 1-63 chars, alphanumerics/hyphens.
-  const re =
-    /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
+  const re = /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
   return re.test(domain);
 }
 

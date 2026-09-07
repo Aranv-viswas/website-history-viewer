@@ -49,6 +49,12 @@ export const LANGUAGES: Record<
 export const ui = {
   en: {
     'nav.compare': 'Compare',
+    'nav.explore': 'Explore',
+    'nav.collections': 'Collections',
+    'footer.evolution': 'Watch an evolution',
+    'footer.collections': 'Curated collections',
+    'footer.onThisDay': 'On this day',
+    'footer.explore.search': 'Search a website',
     'nav.histories': 'Histories',
     'nav.internetHistory': 'Internet History',
     'nav.more': 'More',
@@ -82,6 +88,12 @@ export const ui = {
   },
   es: {
     'nav.compare': 'Comparar',
+    'nav.explore': 'Explorar',
+    'nav.collections': 'Colecciones',
+    'footer.evolution': 'Ver una evolución',
+    'footer.collections': 'Colecciones seleccionadas',
+    'footer.onThisDay': 'Un día como hoy',
+    'footer.explore.search': 'Buscar un sitio web',
     'nav.histories': 'Historiales',
     'nav.internetHistory': 'Historia de Internet',
     'nav.more': 'Más',
@@ -115,6 +127,12 @@ export const ui = {
   },
   fr: {
     'nav.compare': 'Comparer',
+    'nav.explore': 'Explorer',
+    'nav.collections': 'Collections',
+    'footer.evolution': 'Voir une évolution',
+    'footer.collections': 'Collections sélectionnées',
+    'footer.onThisDay': "Un jour comme aujourd'hui",
+    'footer.explore.search': 'Rechercher un site web',
     'nav.histories': 'Historiques',
     'nav.internetHistory': "Histoire d'Internet",
     'nav.more': 'Plus',
@@ -148,14 +166,19 @@ export const ui = {
   },
   de: {
     'nav.compare': 'Vergleichen',
+    'nav.explore': 'Entdecken',
+    'nav.collections': 'Sammlungen',
+    'footer.evolution': 'Eine Entwicklung ansehen',
+    'footer.collections': 'Kuratierte Sammlungen',
+    'footer.onThisDay': 'An diesem Tag',
+    'footer.explore.search': 'Website suchen',
     'nav.histories': 'Verläufe',
     'nav.internetHistory': 'Internetgeschichte',
     'nav.more': 'Mehr',
     'nav.language': 'Sprache',
     'nav.toggleTheme': 'Dunkelmodus umschalten',
 
-    'hero.badge':
-      '🕰️ Unterstützt von der Wayback Machine des Internet Archive',
+    'hero.badge': '🕰️ Unterstützt von der Wayback Machine des Internet Archive',
     'hero.title':
       'Website-Verlauf-Viewer – sehen Sie, wie jede Website früher aussah.',
     'hero.subtitle':
@@ -182,6 +205,12 @@ export const ui = {
   },
   hi: {
     'nav.compare': 'तुलना करें',
+    'nav.explore': 'खोजें',
+    'nav.collections': 'संग्रह',
+    'footer.evolution': 'विकास देखें',
+    'footer.collections': 'चयनित संग्रह',
+    'footer.onThisDay': 'आज के दिन',
+    'footer.explore.search': 'वेबसाइट खोजें',
     'nav.histories': 'इतिहास',
     'nav.internetHistory': 'इंटरनेट का इतिहास',
     'nav.more': 'अधिक',

@@ -1,0 +1,254 @@
+---
+/**
+ * GET /on-this-day?month=&day= — the same calendar date, across the archive's
+ * history.
+ *
+ * The selection is deliberately deterministic rather than random: the day of
+ * the year seeds which curated sites appear and which year each is paired with,
+ * so the page is stable for everyone who loads it on a given date (shareable,
+ * cacheable, and the same for two people talking about it) while still being
+ * different tomorrow.
+ *
+ * Snapshots are not resolved server-side — <SnapshotThumb> resolves each one
+ * lazily as it scrolls into view, so this page renders instantly no matter how
+ * many entries it shows.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import SnapshotThumb from '@components/SnapshotThumb.astro';
+import ShareButtons from '@components/ShareButtons.astro';
+import { allCollectionSites } from '@lib/collections';
+import { domainToSlug } from '@utils/domain';
+import { currentYear } from '@utils/date';
+import { ARCHIVE_START_YEAR, SITE } from '@lib/constants';
+import { breadcrumbJsonLd } from '@lib/seo';
+
+export const prerender = false;
+
+/** How many sites to feature. Enough to browse, few enough to stay quick. */
+const ENTRY_COUNT = 12;
+
+/**
+ * A small deterministic PRNG (mulberry32). We want "shuffled but stable for
+ * this date" — Math.random would make the page differ per request, breaking
+ * caching and making a shared link show something else.
+ */
+function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/** Days in a month, ignoring leap years — Feb 29 is allowed and clamps later. */
+const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+const params = Astro.url.searchParams;
+const now = new Date();
+
+function clampInt(
+  raw: string | null,
+  fallback: number,
+  min: number,
+  max: number
+) {
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+const month = clampInt(params.get('month'), now.getUTCMonth() + 1, 1, 12);
+const day = clampInt(
+  params.get('day'),
+  now.getUTCDate(),
+  1,
+  DAYS_IN_MONTH[month - 1]
+);
+
+const isToday = month === now.getUTCMonth() + 1 && day === now.getUTCDate();
+
+const monthName = MONTH_NAMES[month - 1];
+const dateLabel = `${monthName} ${day}`;
+const thisYear = currentYear();
+
+/* Pick sites and years from the seed. The year range starts a couple of years
+   after the archive's beginning so most picks land on a date the Wayback
+   Machine actually crawled, and stops a year short of now so entries feel
+   historical rather than "the site as it is". */
+const seed = month * 100 + day;
+const random = seededRandom(seed);
+
+const EARLIEST = ARCHIVE_START_YEAR + 2;
+const LATEST = thisYear - 1;
+
+const pool = allCollectionSites();
+// Fisher-Yates with the seeded generator, so the order is stable per date.
+const shuffled = [...pool];
+for (let i = shuffled.length - 1; i > 0; i -= 1) {
+  const j = Math.floor(random() * (i + 1));
+  [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+}
+
+const entries = shuffled.slice(0, ENTRY_COUNT).map((site) => {
+  // Never ask for a year before the site plausibly existed — the curated
+  // `year` is a known-good capture year, so use it as the floor.
+  const floor = Math.max(EARLIEST, site.year);
+  const span = Math.max(1, LATEST - floor + 1);
+  const year = floor + Math.floor(random() * span);
+  const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return { ...site, year, date };
+});
+
+/* Previous / next day navigation, wrapping across month boundaries. */
+function shiftDay(delta: number): { month: number; day: number } {
+  let m = month;
+  let d = day + delta;
+  if (d < 1) {
+    m = m === 1 ? 12 : m - 1;
+    d = DAYS_IN_MONTH[m - 1];
+  } else if (d > DAYS_IN_MONTH[m - 1]) {
+    m = m === 12 ? 1 : m + 1;
+    d = 1;
+  }
+  return { month: m, day: d };
+}
+
+const prev = shiftDay(-1);
+const next = shiftDay(1);
+const href = (m: number, d: number) => `/on-this-day?month=${m}&day=${d}`;
+
+// The selection is a pure function of the date, so it can cache until the
+// day rolls over. A modest window keeps it simple and correct across zones.
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, s-maxage=3600, stale-while-revalidate=86400'
+);
+
+const title = `On This Day — ${dateLabel} in Website History`;
+const description = `See what famous websites looked like on ${dateLabel} in years gone by. ${entries
+  .slice(0, 3)
+  .map((e) => `${e.name} in ${e.year}`)
+  .join(', ')}, and more from the Internet Archive.`;
+
+const canonicalPath = isToday ? '/on-this-day' : href(month, day);
+const shareUrl = new URL(canonicalPath, SITE.url).href;
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: 'On This Day', path: '/on-this-day' },
+]);
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  canonical="/on-this-day"
+  jsonLd={breadcrumb}
+>
+  <div class="container-page py-12">
+    <header class="mb-10 max-w-3xl">
+      <p class="eyebrow">On this day</p>
+      <h1
+        class="mt-2 text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        {dateLabel} in website history
+      </h1>
+      <p class="mt-4 text-lg text-neutral-600 dark:text-neutral-400">
+        Archived snapshots captured on or near {dateLabel} in earlier years. The Wayback
+        Machine returns the closest capture it holds, so the exact date on each one
+        may differ by a few days.
+      </p>
+
+      <nav
+        class="mt-6 flex flex-wrap items-center gap-2"
+        aria-label="Browse other dates"
+      >
+        <a
+          href={href(prev.month, prev.day)}
+          class="btn-secondary !px-4 !py-2 !text-sm"
+        >
+          ← {MONTH_NAMES[prev.month - 1]}
+          {prev.day}
+        </a>
+        {
+          !isToday && (
+            <a href="/on-this-day" class="btn-secondary !px-4 !py-2 !text-sm">
+              Today
+            </a>
+          )
+        }
+        <a
+          href={href(next.month, next.day)}
+          class="btn-secondary !px-4 !py-2 !text-sm"
+        >
+          {MONTH_NAMES[next.month - 1]}
+          {next.day} →
+        </a>
+      </nav>
+    </header>
+
+    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {
+        entries.map((entry) => {
+          const slug = domainToSlug(entry.domain);
+          return (
+            <article class="card flex flex-col overflow-hidden">
+              <SnapshotThumb
+                domain={entry.domain}
+                date={entry.date}
+                label={String(entry.year)}
+                href={`/site/${slug}/${entry.date}`}
+                aspectClass="aspect-[16/10]"
+              />
+              <div class="flex flex-1 flex-col p-4">
+                <h2 class="font-semibold text-neutral-900 dark:text-neutral-100">
+                  {entry.name} in {entry.year}
+                </h2>
+                <p class="mt-0.5 font-mono text-[11px] text-neutral-500">
+                  {dateLabel}, {entry.year} · {entry.domain}
+                </p>
+                <p class="mt-2 flex-1 text-sm text-neutral-600 dark:text-neutral-400">
+                  {entry.note}
+                </p>
+                <a
+                  href={`/site/${slug}/${entry.date}`}
+                  class="mt-3 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                >
+                  View this snapshot →
+                </a>
+              </div>
+            </article>
+          );
+        })
+      }
+    </div>
+
+    <div class="mt-12 flex flex-wrap items-center justify-between gap-4">
+      <ShareButtons
+        url={shareUrl}
+        text={`What the web looked like on ${dateLabel} in years gone by:`}
+      />
+      <div class="flex flex-wrap gap-3">
+        <a href="/random" class="btn-secondary">🎲 Random website</a>
+        <a href="/collections" class="btn-secondary">📚 Collections</a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

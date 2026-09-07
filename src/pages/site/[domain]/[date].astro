@@ -79,11 +79,14 @@ const breadcrumb = breadcrumbJsonLd([
   <div class="container-page py-10">
     {/* Breadcrumb */}
     <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
-      <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100">Home</a>
+      <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >Home</a
+      >
       <span class="mx-2">/</span>
       <a
         href={`/timeline/${slug}`}
-        class="hover:text-neutral-900 dark:hover:text-neutral-100">{name} timeline</a
+        class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >{name} timeline</a
       >
       <span class="mx-2">/</span>
       <span class="text-neutral-700 dark:text-neutral-300">{year}</span>
@@ -148,7 +151,9 @@ const breadcrumb = breadcrumbJsonLd([
     >
       <div>
         <dt class="font-medium text-neutral-500">Website</dt>
-        <dd class="text-neutral-900 dark:text-neutral-100">{name} ({domain})</dd>
+        <dd class="text-neutral-900 dark:text-neutral-100">
+          {name} ({domain})
+        </dd>
       </div>
       <div>
         <dt class="font-medium text-neutral-500">Requested date</dt>
@@ -177,7 +182,9 @@ const breadcrumb = breadcrumbJsonLd([
 
     {/* Change the query */}
     <section class="mt-12">
-      <h2 class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+      <h2
+        class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+      >
         Look up another date or website
       </h2>
       <SearchForm domain={domain} dateA={date} compact />

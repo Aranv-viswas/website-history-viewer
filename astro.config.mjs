@@ -41,6 +41,19 @@ export default defineConfig({
   // Workers runtime).
   adapter: cloudflare({
     imageService: 'compile',
+    // Guarantee the bare /compare landing page reaches the Worker.
+    //
+    // Adding /compare/[domain]/[a]/[b] made the adapter collapse both compare
+    // routes into a single `/compare/*` entry in dist/_routes.json — and that
+    // wildcard does not match the bare `/compare`. Since /compare is on-demand
+    // it has no static file to fall back to, so the page (linked from the nav
+    // and listed in the sitemap) would 404 in production while working
+    // perfectly in `astro dev`. An explicit include pins it.
+    routes: {
+      extend: {
+        include: [{ pattern: '/compare' }],
+      },
+    },
     // The local Workers runtime (workerd, via miniflare's platform proxy)
     // crashes with a native access violation on some Windows machines — a
     // known workerd/Windows issue (cloudflare/workers-sdk#9858). We don't use

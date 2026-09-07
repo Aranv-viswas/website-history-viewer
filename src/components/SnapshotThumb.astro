@@ -1,0 +1,329 @@
+---
+/**
+ * SnapshotThumb — a small, cheap preview of one archived snapshot.
+ *
+ * The performance problem this exists to solve: a timeline rail can hold 24+
+ * previews, and the default preview strategy is an <iframe> pointing at
+ * web.archive.org. Two dozen live iframes means two dozen page loads of a
+ * third-party archive — the tab locks up and the Archive rate-limits us.
+ *
+ * So a thumb ships as an inert poster (an inline SVG data URI — zero requests)
+ * and upgrades itself to real content only when it scrolls into view, and only
+ * a few at a time. The upgrade path depends on what the screenshot provider
+ * gave us:
+ *
+ *   - a rendered image  -> swap in the <img> (cheap, preferred)
+ *   - iframe fallback   -> mount the iframe, but never more than
+ *                          MAX_LIVE_FRAMES of them across the whole page
+ *
+ * The snapshot itself is resolved lazily too: pass `date` with no `snapshot`
+ * and the component renders a skeleton that fetches /api/snapshot on approach.
+ */
+import type { Snapshot } from '@lib/types';
+import { placeholderPoster, toEmbeddableUrl } from '@services/screenshot';
+import { domainToSlug } from '@utils/domain';
+
+interface Props {
+  domain: string;
+  /** ISO date this thumb represents. */
+  date: string;
+  /** Short caption, e.g. "Jun 2005". */
+  label: string;
+  /**
+   * A pre-resolved snapshot. Omit to have the thumb resolve itself from
+   * /api/snapshot when it scrolls into view.
+   */
+  snapshot?: Snapshot | null;
+  /** Optional pre-rendered image URL (from a configured screenshot service). */
+  imageUrl?: string | null;
+  /** Wrap the thumb in a link to the full snapshot view. */
+  href?: string | null;
+  /** Tailwind aspect-ratio class. */
+  aspectClass?: string;
+  /** Mark as the active thumb in a rail. */
+  active?: boolean;
+}
+
+const {
+  domain,
+  date,
+  label,
+  snapshot = null,
+  imageUrl = null,
+  href,
+  aspectClass = 'aspect-[16/10]',
+  active = false,
+} = Astro.props;
+
+const poster = placeholderPoster(label, 480, 300);
+const link =
+  href === null ? null : (href ?? `/site/${domainToSlug(domain)}/${date}`);
+
+/* Everything the client needs to upgrade this thumb, resolved server-side when
+   we already know the answer and left blank when we don't. */
+const embedUrl = snapshot?.archivedUrl
+  ? toEmbeddableUrl(snapshot.archivedUrl)
+  : null;
+const unavailable = snapshot != null && !snapshot.available;
+const Tag = link ? 'a' : 'div';
+---
+
+<Tag
+  {...link ? { href: link } : {}}
+  data-thumb
+  data-domain={domain}
+  data-date={date}
+  data-embed={embedUrl ?? undefined}
+  data-image={imageUrl ?? undefined}
+  data-resolved={snapshot ? 'true' : undefined}
+  class:list={[
+    'group block overflow-hidden rounded-lg border bg-neutral-100 transition dark:bg-neutral-900',
+    active
+      ? 'border-brand-500 ring-2 ring-brand-500/40'
+      : 'border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700',
+  ]}
+  aria-label={`${label} snapshot of ${domain}`}
+>
+  <div class:list={['relative w-full overflow-hidden', aspectClass]}>
+    {
+      /* The always-present poster. Never removed — it stays as the backdrop, so
+        a blocked or slow upgrade degrades to something rather than nothing. */
+    }
+    <img
+      src={poster}
+      alt=""
+      width="480"
+      height="300"
+      loading="lazy"
+      decoding="async"
+      class="absolute inset-0 h-full w-full object-cover"
+    />
+
+    {
+      unavailable ? (
+        <div class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-neutral-100/95 p-3 text-center dark:bg-neutral-900/95">
+          <span class="text-lg" aria-hidden="true">
+            🗄️
+          </span>
+          <span class="text-[11px] font-medium text-neutral-500">
+            No capture
+          </span>
+        </div>
+      ) : (
+        <div
+          data-thumb-slot
+          class="absolute inset-0"
+          aria-hidden={snapshot ? undefined : 'true'}
+        />
+      )
+    }
+
+    {/* Skeleton shimmer, removed by the client once the thumb settles. */}
+    <div
+      data-thumb-skeleton
+      class:list={[
+        'pointer-events-none absolute inset-0 animate-pulse bg-neutral-200/70 dark:bg-neutral-800/70',
+        unavailable ? 'hidden' : '',
+      ]}
+    >
+    </div>
+  </div>
+
+  <div
+    class="flex items-center justify-between gap-2 border-t border-neutral-200 bg-white px-2.5 py-1.5 dark:border-neutral-800 dark:bg-neutral-900"
+  >
+    <span
+      class:list={[
+        'font-mono text-[11px]',
+        active
+          ? 'font-semibold text-brand-600 dark:text-brand-400'
+          : 'text-neutral-600 dark:text-neutral-400',
+      ]}>{label}</span
+    >
+    {
+      link && (
+        <span
+          class="text-[11px] text-neutral-400 opacity-0 transition group-hover:opacity-100"
+          aria-hidden="true"
+        >
+          open →
+        </span>
+      )
+    }
+  </div>
+</Tag>
+
+<script>
+  /**
+   * Thumb upgrader — one delegated controller for every thumb on the page.
+   *
+   * Two budgets keep this cheap no matter how many thumbs are rendered:
+   *   MAX_LIVE_FRAMES  hard ceiling on simultaneously-mounted iframes
+   *   MAX_INFLIGHT     hard ceiling on simultaneous /api/snapshot lookups
+   *
+   * Thumbs are upgraded in the order they enter the viewport, and an iframe is
+   * unmounted again when its thumb scrolls well clear, returning its budget.
+   */
+  const MAX_LIVE_FRAMES = 6;
+  const MAX_INFLIGHT = 3;
+
+  interface SnapshotPayload {
+    available?: boolean;
+    archivedUrl?: string | null;
+  }
+
+  const live = new Set<HTMLElement>();
+  const queue: HTMLElement[] = [];
+  let inflight = 0;
+
+  /** Turn an archived URL into the toolbar-free embeddable form. */
+  function embeddable(url: string): string {
+    return url.replace(/\/web\/(\d{1,14})(\w{0,3}_)?\//, '/web/$1if_/');
+  }
+
+  function settle(thumb: HTMLElement) {
+    thumb
+      .querySelector<HTMLElement>('[data-thumb-skeleton]')
+      ?.classList.add('hidden');
+  }
+
+  function showUnavailable(thumb: HTMLElement) {
+    const slot = thumb.querySelector<HTMLElement>('[data-thumb-slot]');
+    if (slot) {
+      slot.innerHTML =
+        '<div class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-neutral-100/95 p-3 text-center dark:bg-neutral-900/95">' +
+        '<span class="text-lg" aria-hidden="true">🗄️</span>' +
+        '<span class="text-[11px] font-medium text-neutral-500">No capture</span></div>';
+    }
+    settle(thumb);
+  }
+
+  /** Mount the actual preview, respecting the live-iframe budget. */
+  function mount(thumb: HTMLElement) {
+    const slot = thumb.querySelector<HTMLElement>('[data-thumb-slot]');
+    if (!slot || slot.dataset.mounted === 'true') return;
+
+    const image = thumb.dataset.image;
+    if (image) {
+      // A rendered image is cheap — no budget needed.
+      const img = document.createElement('img');
+      img.src = image;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.className = 'absolute inset-0 h-full w-full object-cover object-top';
+      img.addEventListener('load', () => settle(thumb), { once: true });
+      img.addEventListener('error', () => settle(thumb), { once: true });
+      slot.appendChild(img);
+      slot.dataset.mounted = 'true';
+      return;
+    }
+
+    const embed = thumb.dataset.embed;
+    if (!embed) {
+      settle(thumb);
+      return;
+    }
+
+    if (live.size >= MAX_LIVE_FRAMES) {
+      if (!queue.includes(thumb)) queue.push(thumb);
+      // A queued thumb shouldn't shimmer forever — show its poster meanwhile.
+      settle(thumb);
+      return;
+    }
+
+    const frame = document.createElement('iframe');
+    frame.src = embed;
+    frame.title = thumb.getAttribute('aria-label') ?? 'Archived snapshot';
+    frame.loading = 'lazy';
+    frame.referrerPolicy = 'no-referrer';
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    // Thumbs are previews, not interactive surfaces — clicks belong to the
+    // wrapping link, and a scrollable iframe would hijack page scrolling.
+    frame.className =
+      'pointer-events-none absolute inset-0 h-full w-full border-0';
+    frame.addEventListener('load', () => settle(thumb), { once: true });
+    frame.addEventListener('error', () => settle(thumb), { once: true });
+    slot.appendChild(frame);
+    slot.dataset.mounted = 'true';
+    live.add(thumb);
+
+    // An iframe that never fires load must not hold its budget slot forever.
+    window.setTimeout(() => settle(thumb), 12000);
+  }
+
+  /** Free an off-screen iframe and let a queued thumb take its place. */
+  function unmount(thumb: HTMLElement) {
+    const slot = thumb.querySelector<HTMLElement>('[data-thumb-slot]');
+    if (!slot || slot.dataset.mounted !== 'true') return;
+    if (!slot.querySelector('iframe')) return; // images stay; they're cheap
+
+    slot.innerHTML = '';
+    delete slot.dataset.mounted;
+    live.delete(thumb);
+
+    const next = queue.shift();
+    if (next?.isConnected) mount(next);
+  }
+
+  /** Resolve a snapshot for a thumb that shipped without one. */
+  async function resolve(thumb: HTMLElement) {
+    if (thumb.dataset.resolving === 'true') return;
+    if (inflight >= MAX_INFLIGHT) return; // retried on the next intersection
+    thumb.dataset.resolving = 'true';
+    inflight += 1;
+
+    try {
+      const params = new URLSearchParams({
+        domain: thumb.dataset.domain ?? '',
+        date: thumb.dataset.date ?? '',
+      });
+      const res = await fetch(`/api/snapshot?${params}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const snap = (await res.json()) as SnapshotPayload;
+
+      thumb.dataset.resolved = 'true';
+      if (snap.available && snap.archivedUrl) {
+        thumb.dataset.embed = embeddable(snap.archivedUrl);
+        mount(thumb);
+      } else {
+        showUnavailable(thumb);
+      }
+    } catch {
+      // A failed lookup leaves the poster in place, which is a valid state.
+      thumb.dataset.resolved = 'true';
+      settle(thumb);
+    } finally {
+      inflight -= 1;
+      delete thumb.dataset.resolving;
+    }
+  }
+
+  const observer =
+    'IntersectionObserver' in window
+      ? new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              const thumb = entry.target as HTMLElement;
+              if (entry.isIntersecting) {
+                if (thumb.dataset.resolved === 'true') mount(thumb);
+                else void resolve(thumb);
+              } else if (
+                entry.boundingClientRect.top > window.innerHeight * 2 ||
+                entry.boundingClientRect.bottom < -window.innerHeight
+              ) {
+                unmount(thumb);
+              }
+            }
+          },
+          // Start work slightly before a thumb is visible so it's ready on
+          // arrival, and keep a generous margin before tearing one back down.
+          { rootMargin: '300px 400px' }
+        )
+      : null;
+
+  document.querySelectorAll<HTMLElement>('[data-thumb]').forEach((thumb) => {
+    if (observer) observer.observe(thumb);
+    else if (thumb.dataset.resolved === 'true') mount(thumb);
+  });
+</script>

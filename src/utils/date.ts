@@ -43,9 +43,7 @@ export function fromWaybackTimestamp(ts: string): Date | null {
   const m = ts?.match(/^(\d{4})(\d{2})(\d{2})(\d{2})?(\d{2})?(\d{2})?$/);
   if (!m) return null;
   const [, y, mo, d, h = '00', mi = '00', s = '00'] = m;
-  const date = new Date(
-    Date.UTC(+y, +mo - 1, +d, +h, +mi, +s)
-  );
+  const date = new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +s));
   return Number.isNaN(date.getTime()) ? null : date;
 }
 

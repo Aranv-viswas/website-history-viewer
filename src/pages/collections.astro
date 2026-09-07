@@ -1,0 +1,123 @@
+---
+/**
+ * GET /collections — the index of curated website collections.
+ *
+ * Prerendered: the collection data is static, so this is a plain static page
+ * that also gets localized URLs from Astro's i18n fallback.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { COLLECTIONS } from '@lib/collections';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { SITE } from '@lib/constants';
+import { getLang, localizeHref } from '@i18n/utils';
+
+export const prerender = true;
+
+const lang = getLang(Astro);
+const L = (path: string) => localizeHref(path, lang);
+
+const title = 'Website History Collections — Curated Sites Worth Exploring';
+const description =
+  'Hand-picked collections of websites with histories worth watching: the early internet, social media evolution, technology companies, web design eras, and sites that no longer exist.';
+
+const totalSites = COLLECTIONS.reduce((sum, c) => sum + c.sites.length, 0);
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: 'Collections', path: '/collections' },
+]);
+
+const listJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: 'Website history collections',
+  numberOfItems: COLLECTIONS.length,
+  itemListElement: COLLECTIONS.map((collection, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: collection.title,
+    description: collection.description,
+    url: new URL(`/collection/${collection.slug}`, SITE.url).href,
+  })),
+};
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  jsonLd={[breadcrumb, listJsonLd]}
+>
+  <div class="container-page py-12">
+    <header class="mb-12 max-w-3xl">
+      <p class="eyebrow">Collections</p>
+      <h1
+        class="mt-2 text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        Websites worth watching change
+      </h1>
+      <p class="mt-4 text-lg text-neutral-600 dark:text-neutral-400">
+        {COLLECTIONS.length} collections, {totalSites} websites. Each one has an archived
+        history that actually shows something — a redesign arc, a vanished era, or
+        a company that reinvented itself in public.
+      </p>
+    </header>
+
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {
+        COLLECTIONS.map((collection) => (
+          <a
+            href={L(`/collection/${collection.slug}`)}
+            class="card group flex flex-col p-6 transition hover:border-neutral-300 hover:shadow-card-hover dark:hover:border-neutral-700"
+          >
+            <span class="text-3xl" aria-hidden="true">
+              {collection.emoji}
+            </span>
+            <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              {collection.title}
+            </h2>
+            <p class="mt-1.5 flex-1 text-sm text-neutral-600 dark:text-neutral-400">
+              {collection.description}
+            </p>
+
+            <ul
+              class="mt-4 flex flex-wrap gap-1.5"
+              aria-label={`Sites in ${collection.title}`}
+            >
+              {collection.sites.slice(0, 4).map((site) => (
+                <li class="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[11px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+                  {site.name}
+                </li>
+              ))}
+              {collection.sites.length > 4 && (
+                <li class="px-1 py-0.5 font-mono text-[11px] text-neutral-500">
+                  +{collection.sites.length - 4} more
+                </li>
+              )}
+            </ul>
+
+            <span class="mt-4 text-sm font-medium text-brand-600 group-hover:underline dark:text-brand-400">
+              Explore the collection →
+            </span>
+          </a>
+        ))
+      }
+    </div>
+
+    <section
+      class="mt-16 rounded-xl border border-neutral-200 bg-white p-8 text-center dark:border-neutral-800 dark:bg-neutral-900"
+    >
+      <h2 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+        Or let the web surprise you
+      </h2>
+      <p
+        class="mx-auto mt-2 max-w-lg text-sm text-neutral-600 dark:text-neutral-400"
+      >
+        Jump to a randomly chosen website at a randomly chosen point in its
+        archived history.
+      </p>
+      <a href="/random" data-track="random_website" class="btn-primary mt-5">
+        🎲 Take me somewhere on the old web
+      </a>
+    </section>
+  </div>
+</BaseLayout>

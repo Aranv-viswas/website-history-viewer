@@ -1,0 +1,230 @@
+---
+/**
+ * GET /compare/[domain]/[a]/[b] — the canonical, shareable comparison URL.
+ *
+ * e.g. /compare/google.com/1998-11-11/2026-01-01
+ *
+ * The older /compare?domain=&a=&b= form still works and now redirects here, so
+ * every existing link keeps resolving while new links are clean and readable.
+ * Dates accept either a full ISO date or a bare year ("2005"), which makes
+ * hand-written and shared links forgiving; a year is normalized to mid-year and
+ * the request is redirected to the canonical form so one comparison has exactly
+ * one URL.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import ComparisonView from '@components/ComparisonView.astro';
+import ChangeAnalysis from '@components/ChangeAnalysis.astro';
+import ShareButtons from '@components/ShareButtons.astro';
+import SearchForm from '@components/SearchForm.astro';
+import HistoryTimeline from '@components/HistoryTimeline.astro';
+import { getSnapshot } from '@services/wayback';
+import { getWebsiteScreenshot } from '@services/screenshot';
+import { getArchiveOverview } from '@services/archive-overview';
+import {
+  slugToDomain,
+  isValidDomain,
+  domainDisplayName,
+  domainToSlug,
+} from '@utils/domain';
+import {
+  isValidArchiveDate,
+  formatMonthYear,
+  formatISODate,
+  clampYear,
+} from '@utils/date';
+import { buildFrames } from '@lib/history';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { SITE } from '@lib/constants';
+import type { ComparisonResult } from '@lib/types';
+
+export const prerender = false;
+
+/**
+ * Accept "2005" as well as "2005-06-15". A bare year is a natural thing to type
+ * or share, so we normalize rather than reject — mid-year, because the
+ * availability lookup finds the closest capture and the middle of a year can
+ * reach in both directions.
+ */
+function normalizeDateParam(raw: string): string | null {
+  const value = (raw ?? '').trim();
+  if (isValidArchiveDate(value)) return value;
+  if (/^\d{4}$/.test(value)) return `${clampYear(Number(value))}-06-15`;
+  return null;
+}
+
+const domain = slugToDomain(Astro.params.domain ?? '');
+const rawA = Astro.params.a ?? '';
+const rawB = Astro.params.b ?? '';
+
+if (!isValidDomain(domain)) {
+  return Astro.redirect('/compare?error=invalid-domain', 302);
+}
+
+const a = normalizeDateParam(rawA);
+const b = normalizeDateParam(rawB);
+
+if (!a || !b) {
+  return Astro.redirect(
+    `/compare?domain=${encodeURIComponent(domain)}&error=invalid-date`,
+    302
+  );
+}
+
+const slug = domainToSlug(domain);
+
+// Keep one canonical URL per comparison: a year shorthand redirects to the
+// resolved ISO form rather than serving duplicate content at two addresses.
+if (a !== rawA || b !== rawB) {
+  return Astro.redirect(`/compare/${slug}/${a}/${b}`, 301);
+}
+
+const name = domainDisplayName(domain);
+const labelA = formatMonthYear(a);
+const labelB = formatMonthYear(b);
+
+const [snapA, snapB] = await Promise.all([
+  getSnapshot(domain, a),
+  getSnapshot(domain, b),
+]);
+const [shotA, shotB] = await Promise.all([
+  getWebsiteScreenshot(snapA.archivedUrl, {
+    alt: `${name} on ${formatISODate(a)}`,
+  }),
+  getWebsiteScreenshot(snapB.archivedUrl, {
+    alt: `${name} on ${formatISODate(b)}`,
+  }),
+]);
+
+const result: ComparisonResult = {
+  domain,
+  a: { snapshot: snapA, screenshot: shotA },
+  b: { snapshot: snapB, screenshot: shotB },
+};
+
+// The context timeline is a bonus, not a dependency: if the overview call
+// fails the comparison itself still renders.
+const overview = await getArchiveOverview(domain);
+const showTimeline = overview.status === 'ok' && overview.months.length > 1;
+
+const anyAvailable = snapA.available || snapB.available;
+
+Astro.response.headers.set(
+  'Cache-Control',
+  anyAvailable
+    ? 'public, s-maxage=86400, stale-while-revalidate=604800'
+    : 'public, s-maxage=300, stale-while-revalidate=600'
+);
+
+const yearA = a.slice(0, 4);
+const yearB = b.slice(0, 4);
+
+const title = `${name} ${yearA} vs ${yearB} — Website Comparison`;
+const description = anyAvailable
+  ? `Compare what ${domain} looked like in ${labelA} versus ${labelB}. View both archived Wayback Machine snapshots side by side, or drag the before/after slider to see exactly what changed.`
+  : `We could not find archived snapshots of ${domain} for both ${labelA} and ${labelB}. Try different dates or browse the full ${name} timeline.`;
+
+const canonicalPath = `/compare/${slug}/${a}/${b}`;
+const shareUrl = new URL(canonicalPath, SITE.url).href;
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: `${name} history`, path: `/timeline/${slug}` },
+  { name: `${yearA} vs ${yearB}`, path: canonicalPath },
+]);
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  type="article"
+  noindex={!anyAvailable}
+  jsonLd={breadcrumb}
+>
+  <div class="container-page py-10">
+    <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
+      <a href="/" class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >Home</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <a
+        href={`/timeline/${slug}`}
+        class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >{name} timeline</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <span class="text-neutral-700 dark:text-neutral-300"
+        >{yearA} vs {yearB}</span
+      >
+    </nav>
+
+    <header class="mb-8">
+      <p class="eyebrow">Website comparison</p>
+      <h1
+        class="mt-2 text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        {name}: {labelA} vs {labelB}
+      </h1>
+      <p class="mt-3 max-w-2xl text-neutral-600 dark:text-neutral-400">
+        {
+          anyAvailable
+            ? `Two archived captures of ${domain}, ${labelA} and ${labelB}. Switch to the before/after slider to drag between them.`
+            : description
+        }
+      </p>
+    </header>
+
+    <ComparisonView result={result} labelA={labelA} labelB={labelB} />
+
+    {
+      /* The markup analysis only means something when both captures exist. */
+      snapA.available && snapB.available && (
+        <ChangeAnalysis
+          domain={domain}
+          dateA={a}
+          dateB={b}
+          labelA={labelA}
+          labelB={labelB}
+        />
+      )
+    }
+
+    <div class="mt-8 flex flex-wrap items-center justify-between gap-4">
+      <ShareButtons
+        url={shareUrl}
+        text={`See how ${name} changed from ${labelA} to ${labelB}:`}
+      />
+      <div class="flex flex-wrap gap-3">
+        <a href={`/evolution/${slug}`} class="btn-secondary">
+          ▶ Play the full evolution
+        </a>
+        <a href={`/timeline/${slug}`} class="btn-secondary">
+          📅 Full {name} timeline
+        </a>
+      </div>
+    </div>
+
+    {
+      showTimeline && (
+        <section class="mt-14">
+          <h2 class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+            Where these two sit in {name}'s history
+          </h2>
+          <HistoryTimeline
+            overview={overview}
+            frames={buildFrames(overview, 24)}
+            selectedDate={a}
+          />
+        </section>
+      )
+    }
+
+    <section class="mt-14 max-w-3xl">
+      <h2
+        class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-100"
+      >
+        Compare different dates
+      </h2>
+      <SearchForm domain={domain} dateA={a} dateB={b} compare compact />
+    </section>
+  </div>
+</BaseLayout>

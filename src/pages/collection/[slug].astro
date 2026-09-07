@@ -1,0 +1,154 @@
+---
+/**
+ * GET /collection/[slug] — one curated collection.
+ *
+ * Prerendered via getStaticPaths: the set of collections is fixed and small, so
+ * these are static pages that get localized URLs for free and cost nothing to
+ * serve. The per-site previews still resolve live, lazily, through
+ * <SnapshotThumb> — so the page ships instantly and fills in as it's read.
+ */
+import BaseLayout from '@layouts/BaseLayout.astro';
+import SnapshotThumb from '@components/SnapshotThumb.astro';
+import ShareButtons from '@components/ShareButtons.astro';
+import { COLLECTIONS } from '@lib/collections';
+import { domainToSlug } from '@utils/domain';
+import { yearToISO } from '@utils/date';
+import { breadcrumbJsonLd } from '@lib/seo';
+import { SITE } from '@lib/constants';
+import { getLang, localizeHref } from '@i18n/utils';
+
+export const prerender = true;
+
+export function getStaticPaths() {
+  return COLLECTIONS.map((collection) => ({
+    params: { slug: collection.slug },
+    props: { collection },
+  }));
+}
+
+const { collection } = Astro.props;
+const lang = getLang(Astro);
+const L = (path: string) => localizeHref(path, lang);
+
+const title = `${collection.title} — Website History Collection`;
+const description = `${collection.description} Explore archived snapshots of ${collection.sites
+  .slice(0, 4)
+  .map((s) => s.name)
+  .join(', ')} and more, from the Internet Archive Wayback Machine.`;
+
+const canonicalPath = `/collection/${collection.slug}`;
+const shareUrl = new URL(canonicalPath, SITE.url).href;
+
+const breadcrumb = breadcrumbJsonLd([
+  { name: 'Home', path: '/' },
+  { name: 'Collections', path: '/collections' },
+  { name: collection.title, path: canonicalPath },
+]);
+
+const listJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: collection.title,
+  description: collection.description,
+  numberOfItems: collection.sites.length,
+  itemListElement: collection.sites.map((site, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: site.name,
+    description: site.note,
+    url: new URL(`/timeline/${domainToSlug(site.domain)}`, SITE.url).href,
+  })),
+};
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  jsonLd={[breadcrumb, listJsonLd]}
+>
+  <div class="container-page py-12">
+    <nav class="mb-6 text-sm text-neutral-500" aria-label="Breadcrumb">
+      <a
+        href={L('/')}
+        class="hover:text-neutral-900 dark:hover:text-neutral-100">Home</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <a
+        href={L('/collections')}
+        class="hover:text-neutral-900 dark:hover:text-neutral-100"
+        >Collections</a
+      >
+      <span class="mx-2" aria-hidden="true">/</span>
+      <span class="text-neutral-700 dark:text-neutral-300"
+        >{collection.title}</span
+      >
+    </nav>
+
+    <header class="mb-10 max-w-3xl">
+      <span class="text-4xl" aria-hidden="true">{collection.emoji}</span>
+      <h1
+        class="mt-3 text-3xl font-semibold tracking-tighter text-neutral-900 sm:text-4xl dark:text-neutral-50"
+      >
+        {collection.title}
+      </h1>
+      <p class="mt-4 text-lg text-neutral-600 dark:text-neutral-400">
+        {collection.intro}
+      </p>
+    </header>
+
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {
+        collection.sites.map((site) => {
+          const slug = domainToSlug(site.domain);
+          const date = yearToISO(site.year);
+          return (
+            <article class="card flex flex-col overflow-hidden">
+              <SnapshotThumb
+                domain={site.domain}
+                date={date}
+                label={String(site.year)}
+                href={`/site/${slug}/${date}`}
+                aspectClass="aspect-[16/10]"
+              />
+
+              <div class="flex flex-1 flex-col p-4">
+                <h2 class="font-semibold text-neutral-900 dark:text-neutral-100">
+                  {site.name}
+                </h2>
+                <p class="font-mono text-[11px] text-neutral-500">
+                  {site.domain}
+                </p>
+                <p class="mt-2 flex-1 text-sm text-neutral-600 dark:text-neutral-400">
+                  {site.note}
+                </p>
+
+                <div class="mt-4 flex flex-wrap gap-2 text-xs">
+                  <a
+                    href={`/timeline/${slug}`}
+                    class="rounded-full border border-neutral-200 px-2.5 py-1 font-medium text-neutral-700 transition hover:border-neutral-300 dark:border-neutral-800 dark:text-neutral-300"
+                  >
+                    📅 Timeline
+                  </a>
+                  <a
+                    href={`/evolution/${slug}`}
+                    class="rounded-full border border-neutral-200 px-2.5 py-1 font-medium text-neutral-700 transition hover:border-neutral-300 dark:border-neutral-800 dark:text-neutral-300"
+                  >
+                    ▶ Evolution
+                  </a>
+                </div>
+              </div>
+            </article>
+          );
+        })
+      }
+    </div>
+
+    <div class="mt-12 flex flex-wrap items-center justify-between gap-4">
+      <ShareButtons
+        url={shareUrl}
+        text={`${collection.title} — website histories worth exploring:`}
+      />
+      <a href={L('/collections')} class="btn-secondary"> ← All collections </a>
+    </div>
+  </div>
+</BaseLayout>

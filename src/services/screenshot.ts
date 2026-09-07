@@ -41,7 +41,8 @@ const DEFAULTS: Required<ScreenshotOptions> = {
 function env(name: string): string | undefined {
   const fromProcess =
     typeof process !== 'undefined' ? process.env?.[name] : undefined;
-  const value = fromProcess ?? (import.meta.env as Record<string, unknown>)[name];
+  const value =
+    fromProcess ?? (import.meta.env as Record<string, unknown>)[name];
   return value ? String(value) : undefined;
 }
 

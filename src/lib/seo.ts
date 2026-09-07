@@ -23,7 +23,10 @@ export function canonicalURL(path: string, base: string = SITE.url): string {
 }
 
 /** Absolute URL for an Open Graph image (handles relative or absolute input). */
-export function absoluteImageURL(image: string, base: string = SITE.url): string {
+export function absoluteImageURL(
+  image: string,
+  base: string = SITE.url
+): string {
   if (/^https?:\/\//.test(image)) return image;
   return canonicalURL(image, base);
 }
@@ -48,9 +51,7 @@ export function websiteJsonLd() {
 }
 
 /** JSON-LD breadcrumb trail. */
-export function breadcrumbJsonLd(
-  items: Array<{ name: string; path: string }>
-) {
+export function breadcrumbJsonLd(items: Array<{ name: string; path: string }>) {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',

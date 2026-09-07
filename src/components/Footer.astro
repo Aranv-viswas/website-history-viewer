@@ -73,6 +73,34 @@ const L = (path: string) => localizeHref(path, lang);
         </li>
         <li>
           <a
+            href={L('/evolution/google.com')}
+            class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            >{t('footer.evolution')}</a
+          >
+        </li>
+        <li>
+          <a
+            href={L('/collections')}
+            class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            >{t('footer.collections')}</a
+          >
+        </li>
+        <li>
+          <a
+            href={L('/on-this-day')}
+            class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            >{t('footer.onThisDay')}</a
+          >
+        </li>
+        <li>
+          <a
+            href={L('/explore')}
+            class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            >{t('footer.explore.search')}</a
+          >
+        </li>
+        <li>
+          <a
             href={L('/#examples')}
             class="text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
             >{t('footer.examples')}</a
